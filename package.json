@@ -20,14 +20,9 @@
     "react-native-screens": "4.25.2"
   },
   "devDependencies": {
-    "@resvg/resvg-js": "^2.6.2",
     "@types/jest": "^30.0.0",
     "@types/react": "~19.2.2",
     "jest": "^30.4.2",
-    "pixelmatch": "^7.2.0",
-    "pngjs": "^7.0.0",
-    "potrace": "^2.1.8",
-    "sharp": "^0.35.3",
     "ts-jest": "^29.4.11",
     "typescript": "~6.0.3"
   },

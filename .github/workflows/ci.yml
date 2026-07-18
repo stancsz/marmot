@@ -22,14 +22,16 @@ jobs:
       - name: Pin npm 11
         run: npm install -g npm@11
 
+      # npm install, not npm ci: jest 30's wasm resolver fallback
+      # (@unrs/resolver-binding-wasm32-wasi) pins nested @emnapi deps that
+      # npm omits from any platform's lockfile, so `npm ci`'s completeness
+      # check fails everywhere (reproduced locally; upstream npm quirk with
+      # platform-optional packages). install reconciles from the same lock.
       # --ignore-scripts: llama.rn's postinstall downloads ~100 MB of native
       # artifacts needed only for device builds — jest, tsc, and the Metro
-      # bundle don't touch them, and skipping keeps CI fast and offline-safe.
-      # --omit=optional: sharp/resvg wasm platform variants (logo tooling)
-      # demand @emnapi entries the Windows-written lock omits; CI needs none
-      # of them.
+      # bundle don't touch them.
       - name: Install dependencies
-        run: npm ci --ignore-scripts --omit=optional
+        run: npm install --ignore-scripts --no-audit --no-fund
 
       - name: Typecheck
         run: npx tsc --noEmit
