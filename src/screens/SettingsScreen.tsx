@@ -4,6 +4,7 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
+  Switch,
   Text,
   TextInput,
   View,
@@ -139,6 +140,22 @@ export default function SettingsScreen() {
         <Text style={styles.resetText}>Reset to defaults</Text>
       </Pressable>
 
+      <View style={styles.switchRow}>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.rowLabel}>Verify answers</Text>
+          <Text style={styles.rowHint}>
+            After each Agent Mode reply, the model critiques its own answer
+            and an independent judge pass scores it. Slower, more reliable.
+          </Text>
+        </View>
+        <Switch
+          value={settings.verifyAnswers}
+          onValueChange={(v) => update({ verifyAnswers: v })}
+          trackColor={{ true: colors.accent, false: colors.surfaceAlt }}
+          thumbColor={colors.surface}
+        />
+      </View>
+
       <Text style={styles.rowLabel}>Agent memory</Text>
       <Text style={styles.rowHint}>
         What the agent remembers about you and your projects — view, add, or
@@ -242,6 +259,12 @@ const getStyles = themedStyles((colors: Palette) =>
     fontWeight: '700',
     minWidth: 52,
     textAlign: 'center',
+  },
+  switchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    marginBottom: spacing.xl,
   },
   segmentRow: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.xl },
   segment: {

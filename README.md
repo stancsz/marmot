@@ -64,6 +64,9 @@ actual memory so you know before downloading whether it will run comfortably.
   thought/tool/observation timeline. Multi-step tasks get an upfront plan
   whose steps check off live as the model completes them. Policy-bounded,
   fully on-device, unit-tested core ([docs/AGENT.md](docs/AGENT.md)).
+- ⚖️ **Verified answers (optional)** — a Settings toggle runs a
+  reflection pass (which may revise the answer) plus an independent judge
+  pass after each agent reply, stamping a ✓/⚠ score badge on the message.
 - 🧠 **Memory** — the agent remembers facts about you and your projects
   (viewable and editable in Settings → Memory) and auto-captures one-line
   summaries of past exchanges, injecting what's relevant into future runs.

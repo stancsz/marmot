@@ -19,6 +19,12 @@ export type Role = 'system' | 'user' | 'assistant'
 export interface MessageStats {
   tokensPerSecond?: number
   predictedTokens?: number
+  /** present when the answer went through the reflection+judge pass */
+  verify?: {
+    accept: boolean
+    score: number
+    revised: boolean
+  }
 }
 
 export interface ChatMessage {
@@ -44,6 +50,8 @@ export interface InferenceSettings {
   maxTokens: number
   contextLength: number
   systemPrompt: string
+  /** run reflection + judge after each Agent Mode answer (2 extra passes) */
+  verifyAnswers: boolean
 }
 
 export type DownloadStatus =

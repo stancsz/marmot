@@ -11,6 +11,7 @@ export const DEFAULT_SETTINGS: InferenceSettings = {
   contextLength: 4096,
   systemPrompt:
     'You are a helpful assistant running locally on the user’s phone. Be concise.',
+  verifyAnswers: false,
 }
 
 export function newId(): string {

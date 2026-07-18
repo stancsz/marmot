@@ -46,7 +46,7 @@
     <text x="40" y="470" fill="#E6EDF3" font-size="13">bringing the total to $99.71.</text>
     <text x="40" y="490" fill="#E6EDF3" font-size="13">Split three ways, that's $33.24</text>
     <text x="40" y="510" fill="#E6EDF3" font-size="13">per person.</text>
-    <text x="40" y="534" fill="#6E7681" font-size="10">2 tool calls · plan completed 2/2</text>
+    <text x="40" y="534" fill="#3FB950" font-size="10" font-weight="700">✓ verified 9/10 · plan 2/2 · 2 tool calls</text>
     <!-- input bar -->
     <line x1="8" y1="580" x2="312" y2="580" stroke="#2D333B"/>
     <rect x="24" y="594" width="196" height="44" rx="18" fill="#161B22" stroke="#2D333B"/>

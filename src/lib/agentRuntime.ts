@@ -8,6 +8,7 @@ import {
   AgentStep,
   MemoryStore,
   Plan,
+  VerifiedAnswer,
   calculatorTool,
   datetimeTool,
   makeCancellableLLM,
@@ -16,6 +17,7 @@ import {
   searchChatsTool,
   selectSkills,
   shouldPlan,
+  verifyAnswer,
 } from '../agent'
 
 /**
@@ -71,4 +73,15 @@ export async function runAgentTask(
     plan,
     onStep,
   })
+}
+
+/** reflection + judge pass over a finished answer, on the loaded model */
+export async function verifyAgentAnswer(
+  task: string,
+  answer: string,
+  settings: InferenceSettings,
+  isCancelled: () => boolean
+): Promise<VerifiedAnswer> {
+  const llm = makeCancellableLLM(engineLLM(settings), isCancelled)
+  return verifyAnswer(llm, task, answer)
 }

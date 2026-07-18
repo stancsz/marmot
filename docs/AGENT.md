@@ -45,7 +45,7 @@ One intentional increment per iteration (per SYSTEM.md):
 - [x] Wire Agent Mode into ChatScreen: ⚙ Agent toggle chip, engine adapter (`src/lib/agentRuntime.ts`), cancellable LLM wrapper (tested), live thought/tool/observation timeline, `screen-agent.svg` mockup
 - [x] Memory UI: `MemoryScreen` (Settings → Manage memory) with add/delete grouped by kind; deterministic episodic auto-capture after every exchange (`episodicSummary`, tested) with a 50-entry cap (tested)
 - [x] Plan panel: `shouldPlan` gates a planner round-trip for multi-step tasks; the plan is injected into the loop prompt and the model reports completions via `done_step` in its JSON, driving live ☑ check-offs in the chat UI (protocol + gating tested)
-- [ ] Reflection/judge toggle in Settings ("verify answers" — runs reflect + judge after each agent answer, shows verdict badge)
+- [x] Reflection/judge toggle: "Verify answers" switch in Settings runs `verifyAnswer` (reflect may revise → judge scores the survivor) after each agent reply; verdict badge (✓/⚠ score, revised flag) persists on the message; best-effort — a failed pass never loses the answer
 - [ ] Semantic memory: llama.rn `embedding()` + cosine retrieval replacing keyword-only recall
 - [ ] Subagent orchestration: planner → per-step executor calls with fresh context; judge gate before final answer
 - [ ] On-device E2E: run the agent loop against a real downloaded model on hardware; record results here
@@ -59,3 +59,4 @@ One intentional increment per iteration (per SYSTEM.md):
 | 2026-07-18 | Agent Mode UI wired: `npm test` 27/27 (adds cancellable-LLM tests: pass-through, abort-before-dispatch, discard-late-reply). `tsc` + Android export clean. UI evidence: `docs/assets/screen-agent.svg` (design mockup — on-device screenshot still owed by the hardware E2E item). |
 | 2026-07-18 | Memory UI + episodic capture: `npm test` 29/29 (adds episodicSummary clipping test and EPISODIC_CAP pruning test). `tsc` + Android export clean. UI evidence: `docs/assets/screen-memory.svg`. |
 | 2026-07-18 | Plan panel: `npm test` 34/34 (adds plan-prompt injection, plan_check emission, out-of-plan done_step rejection, done_step snake/camel parsing, shouldPlan gating). `tsc` + Android export clean. UI evidence: updated `docs/assets/screen-agent.svg` with the live plan panel. |
+| 2026-07-18 | Verify answers: `npm test` 38/38 (adds verifyAnswer tests: pass-through, revision-adopted-and-judged, judge rejection surfaced, empty revision ignored). `tsc` + Android export clean. UI evidence: verified badge in `docs/assets/screen-agent.svg`. |

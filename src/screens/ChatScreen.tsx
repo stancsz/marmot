@@ -27,7 +27,7 @@ import {
 import { engine } from '../lib/engine'
 import { downloads } from '../lib/downloads'
 import { shareChatAsMarkdown } from '../lib/exportShare'
-import { agentMemory, runAgentTask } from '../lib/agentRuntime'
+import { agentMemory, runAgentTask, verifyAgentAnswer } from '../lib/agentRuntime'
 import { AgentCancelled, AgentStep, Plan, episodicSummary, markDone } from '../agent'
 import { CATALOG, getModel } from '../models/catalog'
 import { splitThinking } from '../lib/thinking'
@@ -58,6 +58,7 @@ export default function ChatScreen() {
   const [agentMode, setAgentMode] = useState(false)
   const [agentSteps, setAgentSteps] = useState<AgentStep[]>([])
   const [agentPlan, setAgentPlan] = useState<Plan | null>(null)
+  const [verifying, setVerifying] = useState(false)
   const planRef = useRef<Plan | null>(null)
   const cancelRef = useRef(false)
   const listRef = useRef<FlatList>(null)
@@ -194,12 +195,32 @@ export default function ChatScreen() {
           }
         )
         const toolCalls = result.steps.filter((s) => s.kind === 'tool_call').length
+
+        // optional verification pass: reflect (may revise) + judge (scores)
+        let finalAnswer = result.answer
+        let verifyStats: ChatMessage['stats'] = {}
+        if (settings.verifyAnswers && !result.truncated && !cancelRef.current) {
+          setVerifying(true)
+          try {
+            const verified = await verifyAgentAnswer(text, result.answer, settings, () => cancelRef.current)
+            finalAnswer = verified.answer
+            verifyStats = {
+              verify: {
+                accept: verified.verdict.accept,
+                score: verified.verdict.score,
+                revised: verified.revised,
+              },
+            }
+          } catch {
+            // verification is best-effort — a failed pass never loses the answer
+          } finally {
+            setVerifying(false)
+          }
+        }
+
         const assistantMsg: ChatMessage = {
-          ...newMessage(
-            'assistant',
-            result.truncated ? `${result.answer}` : result.answer
-          ),
-          stats: { predictedTokens: undefined, tokensPerSecond: undefined },
+          ...newMessage('assistant', finalAnswer),
+          stats: verifyStats,
         }
         working = {
           ...working,
@@ -207,7 +228,7 @@ export default function ChatScreen() {
           updatedAt: Date.now(),
         }
         await persist(working)
-        agentMemory.add('episodic', episodicSummary(text, result.answer)).catch(() => {})
+        agentMemory.add('episodic', episodicSummary(text, finalAnswer)).catch(() => {})
         if (toolCalls === 0) setAgentSteps([]) // nothing interesting to keep
         return
       }
@@ -366,7 +387,7 @@ export default function ChatScreen() {
               </View>
             )}
             {phase === 'generating' && agentMode && (
-              <StatusRow text="Agent working…" spinner />
+              <StatusRow text={verifying ? 'Verifying answer…' : 'Agent working…'} spinner />
             )}
             {phase === 'generating' && !agentMode && streamingParts && (
               <View style={[styles.bubble, styles.assistantBubble]}>
@@ -417,6 +438,7 @@ function Bubble({ message }: { message: ChatMessage }) {
   const { colors } = useTheme()
   const styles = getStyles(colors)
   const isUser = message.role === 'user'
+  const verify = message.stats?.verify
   return (
     <View style={[styles.bubble, isUser ? styles.userBubble : styles.assistantBubble]}>
       <Text style={styles.bubbleText}>{message.content}</Text>
@@ -424,6 +446,12 @@ function Bubble({ message }: { message: ChatMessage }) {
         <Text style={styles.statsText}>
           {message.stats.tokensPerSecond.toFixed(1)} tok/s
           {message.stats.predictedTokens ? ` · ${message.stats.predictedTokens} tok` : ''}
+        </Text>
+      ) : null}
+      {verify ? (
+        <Text style={[styles.verifyBadge, { color: verify.accept ? colors.green : colors.yellow }]}>
+          {verify.accept ? '✓ verified' : '⚠ judge'} {verify.score}/10
+          {verify.revised ? ' · revised' : ''}
         </Text>
       ) : null}
     </View>
@@ -561,6 +589,7 @@ const getStyles = themedStyles((colors: Palette) =>
   bubbleText: { color: colors.text, fontSize: 15, lineHeight: 22 },
   thinkingText: { color: colors.textFaint, fontSize: 14, fontStyle: 'italic' },
   statsText: { color: colors.textFaint, fontSize: 11, marginTop: spacing.xs },
+  verifyBadge: { fontSize: 11, fontWeight: '700', marginTop: spacing.xs },
   statusRow: {
     flexDirection: 'row',
     alignItems: 'center',
