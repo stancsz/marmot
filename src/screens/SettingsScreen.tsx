@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react'
 import {
+  Alert,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -8,7 +9,8 @@ import {
   View,
 } from 'react-native'
 import { InferenceSettings } from '../types'
-import { DEFAULT_SETTINGS, loadSettings, saveSettings } from '../lib/chatStore'
+import { DEFAULT_SETTINGS, loadChats, loadSettings, saveSettings } from '../lib/chatStore'
+import { shareAllChatsAsJson } from '../lib/exportShare'
 import { colors, radius, spacing } from '../theme'
 
 const CONTEXT_OPTIONS = [2048, 4096, 8192]
@@ -100,6 +102,25 @@ export default function SettingsScreen() {
         placeholder="How should the assistant behave?"
         placeholderTextColor={colors.textFaint}
       />
+
+      <Text style={styles.rowLabel}>Your data</Text>
+      <Text style={styles.rowHint}>
+        Backs up every conversation as a JSON file via the share sheet — save
+        it to Google Drive, OneDrive, Files, or anywhere else you like.
+      </Text>
+      <Pressable
+        style={styles.exportBtn}
+        onPress={async () => {
+          const chats = await loadChats()
+          if (chats.length === 0) {
+            Alert.alert('Nothing to export', 'You have no chats yet.')
+            return
+          }
+          shareAllChatsAsJson(chats).catch((e) => Alert.alert('Export failed', e.message))
+        }}
+      >
+        <Text style={styles.exportText}>Export all chats</Text>
+      </Pressable>
 
       <Pressable style={styles.resetBtn} onPress={() => update(DEFAULT_SETTINGS)}>
         <Text style={styles.resetText}>Reset to defaults</Text>
@@ -203,6 +224,16 @@ const styles = StyleSheet.create({
     textAlignVertical: 'top',
     marginBottom: spacing.xl,
   },
+  exportBtn: {
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    alignItems: 'center',
+    padding: spacing.md,
+    marginBottom: spacing.xl,
+  },
+  exportText: { color: colors.accent, fontSize: 15, fontWeight: '600' },
   resetBtn: { alignItems: 'center', padding: spacing.md, marginBottom: 40 },
   resetText: { color: colors.red, fontSize: 14, fontWeight: '600' },
 })

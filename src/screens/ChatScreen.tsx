@@ -25,6 +25,7 @@ import {
 } from '../lib/chatStore'
 import { engine } from '../lib/engine'
 import { downloads } from '../lib/downloads'
+import { shareChatAsMarkdown } from '../lib/exportShare'
 import { CATALOG, getModel } from '../models/catalog'
 import { splitThinking } from '../lib/thinking'
 import { colors, radius, spacing } from '../theme'
@@ -107,12 +108,26 @@ export default function ChatScreen() {
     }, [])
   )
 
+  const hasMessages = (chat?.messages.length ?? 0) > 0
   useEffect(() => {
-    if (chat) {
-      const model = getModel(chat.modelId)
-      navigation.setOptions({ title: model ? model.name : 'Chat' })
-    }
-  }, [chat?.modelId])
+    const model = getModel(chat?.modelId)
+    navigation.setOptions({
+      title: model ? model.name : 'Chat',
+      headerRight: hasMessages
+        ? () => (
+            <Pressable
+              hitSlop={12}
+              onPress={() => {
+                const current = chatRef.current
+                if (current) shareChatAsMarkdown(current).catch(() => {})
+              }}
+            >
+              <Text style={{ color: colors.textDim, fontSize: 15 }}>Share</Text>
+            </Pressable>
+          )
+        : undefined,
+    })
+  }, [chat?.modelId, hasMessages])
 
   const persist = useCallback(async (next: Chat) => {
     setChat(next)

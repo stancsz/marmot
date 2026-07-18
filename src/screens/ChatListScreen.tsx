@@ -12,6 +12,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Chat } from '../types'
 import { deleteChat, loadChats } from '../lib/chatStore'
+import { shareChatAsJson, shareChatAsMarkdown } from '../lib/exportShare'
 import { getModel } from '../models/catalog'
 import { colors, radius, spacing } from '../theme'
 import type { RootStackParamList } from '../navigation'
@@ -29,9 +30,16 @@ export default function ChatListScreen() {
     }, [])
   )
 
-  const onDelete = (chat: Chat) => {
-    Alert.alert('Delete chat?', chat.title, [
-      { text: 'Cancel', style: 'cancel' },
+  const onChatMenu = (chat: Chat) => {
+    Alert.alert(chat.title, undefined, [
+      {
+        text: 'Share as Markdown',
+        onPress: () => shareChatAsMarkdown(chat).catch((e) => Alert.alert('Share failed', e.message)),
+      },
+      {
+        text: 'Export as JSON',
+        onPress: () => shareChatAsJson(chat).catch((e) => Alert.alert('Export failed', e.message)),
+      },
       {
         text: 'Delete',
         style: 'destructive',
@@ -40,6 +48,7 @@ export default function ChatListScreen() {
           setChats(await loadChats())
         },
       },
+      { text: 'Cancel', style: 'cancel' },
     ])
   }
 
@@ -74,7 +83,7 @@ export default function ChatListScreen() {
             <Pressable
               style={styles.card}
               onPress={() => navigation.navigate('Chat', { chatId: item.id })}
-              onLongPress={() => onDelete(item)}
+              onLongPress={() => onChatMenu(item)}
             >
               <Text style={styles.cardTitle} numberOfLines={1}>
                 {item.title}

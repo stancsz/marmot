@@ -53,6 +53,9 @@ actual memory so you know before downloading whether it will run comfortably.
   into the chat.
 - 🎛️ **Tunable sampling** — temperature, top-p, max tokens, context length
   (2k/4k/8k), and a custom system prompt.
+- 📤 **Export & share** — share a chat as Markdown or back up everything as
+  JSON through the native share sheet (Google Drive, OneDrive, Files, email —
+  no cloud SDKs, no OAuth, Marmot never holds a credential).
 - 🪶 **Lightweight** — ~2 MB JS bundle, no backend, one model in memory at a
   time (switching models releases the previous context first).
 
@@ -103,6 +106,7 @@ src/
     engine.ts            # single global llama.cpp context; load/unload/stream
     downloads.ts         # resumable downloads → .part file → atomic move
     chatStore.ts         # AsyncStorage persistence for chats + settings
+    exportShare.ts       # Markdown/JSON export via the OS share sheet
     deviceMemory.ts      # RAM-fit heuristic (total RAM vs model size)
     thinking.ts          # <think>…</think> splitter for reasoning models
   screens/
@@ -141,6 +145,7 @@ depend on it.
 ## Roadmap
 
 - [ ] Markdown rendering in chat bubbles
+- [ ] Import chats back from a JSON export
 - [ ] Import any local `.gguf` from the Files app
 - [ ] Background downloads
 - [ ] Android GPU (OpenCL/Vulkan) inference where supported
