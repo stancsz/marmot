@@ -12,6 +12,7 @@ import { useFocusEffect } from '@react-navigation/native'
 import * as DocumentPicker from 'expo-document-picker'
 import * as FileSystem from 'expo-file-system/legacy'
 import { agentDocuments, agentMemory } from '../lib/agentRuntime'
+import { importGitHubRepo } from '../lib/repoImport'
 import { MemoryEntry, MemoryKind, StoredDocument } from '../agent'
 import { Palette, radius, spacing, themedStyles } from '../theme'
 import { useTheme } from '../ThemeContext'
@@ -30,6 +31,24 @@ export default function MemoryScreen() {
   const [draft, setDraft] = useState('')
   const [draftKind, setDraftKind] = useState<MemoryKind>('user')
   const [addingDoc, setAddingDoc] = useState(false)
+  const [repoDraft, setRepoDraft] = useState('')
+  const [importingRepo, setImportingRepo] = useState(false)
+
+  const importRepo = async () => {
+    const input = repoDraft.trim()
+    if (!input) return
+    setImportingRepo(true)
+    try {
+      const doc = await importGitHubRepo(input)
+      setRepoDraft('')
+      refresh()
+      Alert.alert('Repository imported', `${doc.name} — ${doc.chunkCount} searchable passages.`)
+    } catch (e: any) {
+      Alert.alert('Import failed', e?.message ?? 'Could not import that repository.')
+    } finally {
+      setImportingRepo(false)
+    }
+  }
 
   const refresh = useCallback(() => {
     agentMemory.all().then((all) => setEntries(all.sort((a, b) => b.createdAt - a.createdAt)))
@@ -125,6 +144,24 @@ export default function MemoryScreen() {
         </View>
         <Pressable onPress={addDocument} disabled={addingDoc} hitSlop={8}>
           <Text style={styles.addDocLink}>{addingDoc ? 'Adding…' : '+ Add'}</Text>
+        </Pressable>
+      </View>
+      <View style={styles.repoRow}>
+        <TextInput
+          style={styles.repoInput}
+          value={repoDraft}
+          onChangeText={setRepoDraft}
+          autoCapitalize="none"
+          autoCorrect={false}
+          placeholder="Import a GitHub repo… e.g. vercel/swr"
+          placeholderTextColor={colors.textFaint}
+        />
+        <Pressable
+          style={[styles.repoBtn, (!repoDraft.trim() || importingRepo) && { opacity: 0.4 }]}
+          disabled={!repoDraft.trim() || importingRepo}
+          onPress={importRepo}
+        >
+          <Text style={styles.repoBtnText}>{importingRepo ? '…' : 'Import'}</Text>
         </Pressable>
       </View>
       {docs.length === 0 && <Text style={styles.emptyText}>No documents yet.</Text>}
@@ -224,6 +261,25 @@ const getStyles = themedStyles((colors: Palette) =>
     },
     docHeaderRow: { flexDirection: 'row', alignItems: 'flex-end', gap: spacing.md },
     addDocLink: { color: colors.accent, fontSize: 14, fontWeight: '600', paddingBottom: spacing.sm },
+    repoRow: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.sm },
+    repoInput: {
+      flex: 1,
+      backgroundColor: colors.surface,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: radius.sm,
+      color: colors.text,
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.sm,
+      fontSize: 13,
+    },
+    repoBtn: {
+      backgroundColor: colors.accent,
+      borderRadius: radius.sm,
+      paddingHorizontal: spacing.lg,
+      justifyContent: 'center',
+    },
+    repoBtnText: { color: colors.accentText, fontSize: 13, fontWeight: '700' },
     sectionHint: { color: colors.textFaint, fontSize: 12, marginTop: 2, marginBottom: spacing.sm },
     emptyText: { color: colors.textFaint, fontSize: 13, marginBottom: spacing.sm },
     entryRow: {

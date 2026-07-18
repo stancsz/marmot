@@ -36,15 +36,19 @@
     <text x="40" y="441" fill="#6E7681" font-size="10.5">7/18/2026</text>
     <text x="272" y="430" fill="#F85149" font-size="14" font-weight="700">✕</text>
     <!-- documents (RAG) -->
-    <text x="24" y="492" fill="#E6EDF3" font-size="15" font-weight="700">Documents</text>
-    <text x="264" y="492" fill="#E8A33D" font-size="13" font-weight="600">+ Add</text>
-    <text x="24" y="510" fill="#6E7681" font-size="10.5">Files the agent can search by meaning.</text>
-    <rect x="24" y="520" width="272" height="52" rx="12" fill="#161B22" stroke="#2D333B"/>
-    <text x="40" y="541" fill="#E6EDF3" font-size="12.5">banff-trip-plan.md</text>
-    <text x="40" y="558" fill="#6E7681" font-size="10.5">42 passages · 7/18/2026</text>
-    <text x="272" y="549" fill="#F85149" font-size="14" font-weight="700">✕</text>
-    <!-- recent activity (below fold) -->
-    <text x="24" y="606" fill="#E6EDF3" font-size="15" font-weight="700">Recent activity</text>
-    <text x="24" y="624" fill="#6E7681" font-size="10.5">Auto-captured summaries of past exchanges.</text>
+    <text x="24" y="490" fill="#E6EDF3" font-size="15" font-weight="700">Documents</text>
+    <text x="264" y="490" fill="#E8A33D" font-size="13" font-weight="600">+ Add</text>
+    <rect x="24" y="500" width="204" height="30" rx="8" fill="#161B22" stroke="#2D333B"/>
+    <text x="36" y="520" fill="#6E7681" font-size="11.5">Import a GitHub repo… e.g. vercel/swr</text>
+    <rect x="236" y="500" width="60" height="30" rx="8" fill="#E8A33D"/>
+    <text x="249" y="520" fill="#0D1117" font-size="11.5" font-weight="700">Import</text>
+    <rect x="24" y="540" width="272" height="46" rx="12" fill="#161B22" stroke="#2D333B"/>
+    <text x="40" y="559" fill="#E6EDF3" font-size="12.5">repo:stancsz/marmot</text>
+    <text x="40" y="575" fill="#6E7681" font-size="10.5">217 passages · 7/18/2026</text>
+    <text x="272" y="566" fill="#F85149" font-size="14" font-weight="700">✕</text>
+    <rect x="24" y="594" width="272" height="46" rx="12" fill="#161B22" stroke="#2D333B"/>
+    <text x="40" y="613" fill="#E6EDF3" font-size="12.5">banff-trip-plan.md</text>
+    <text x="40" y="629" fill="#6E7681" font-size="10.5">42 passages · 7/18/2026</text>
+    <text x="272" y="620" fill="#F85149" font-size="14" font-weight="700">✕</text>
   </g>
 </svg>

@@ -1,45 +1,57 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 660" width="320" height="660" font-family="-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif">
   <defs>
     <clipPath id="screen8"><rect x="8" y="8" width="304" height="644" rx="36"/></clipPath>
+    <linearGradient id="voicebg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0A0E14"/>
+      <stop offset="0.5" stop-color="#101826"/>
+      <stop offset="1" stop-color="#0A0E14"/>
+    </linearGradient>
+    <radialGradient id="orbglow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0.55" stop-color="#3FB950" stop-opacity="0"/>
+      <stop offset="0.85" stop-color="#3FB950" stop-opacity="0.16"/>
+      <stop offset="1" stop-color="#3FB950" stop-opacity="0"/>
+    </radialGradient>
   </defs>
   <rect x="2" y="2" width="316" height="656" rx="42" fill="#000000"/>
   <g clip-path="url(#screen8)">
-    <rect x="8" y="8" width="304" height="644" fill="#0D1117"/>
+    <rect x="8" y="8" width="304" height="644" fill="url(#voicebg)"/>
     <text x="34" y="36" fill="#E6EDF3" font-size="12" font-weight="600">9:41</text>
     <rect x="256" y="26" width="24" height="12" rx="3" fill="none" stroke="#8B949E"/>
     <rect x="258" y="28" width="16" height="8" rx="1.5" fill="#8B949E"/>
     <!-- header -->
-    <text x="24" y="74" fill="#8B949E" font-size="15">‹</text>
-    <text x="138" y="74" fill="#E6EDF3" font-size="17" font-weight="600">Voice</text>
-    <!-- mode toggle -->
-    <rect x="24" y="90" width="132" height="32" rx="16" fill="#E8A33D"/>
-    <text x="52" y="111" fill="#0D1117" font-size="13" font-weight="600">Conversation</text>
-    <rect x="164" y="90" width="132" height="32" rx="16" fill="#161B22" stroke="#2D333B"/>
-    <text x="204" y="111" fill="#8B949E" font-size="13" font-weight="600">Meeting</text>
-    <!-- turns -->
-    <rect x="88" y="146" width="208" height="58" rx="18" fill="#2F3B4C"/>
-    <text x="104" y="171" fill="#E6EDF3" font-size="13">What should I make for dinner</text>
-    <text x="104" y="190" fill="#E6EDF3" font-size="13">with salmon and lemons?</text>
-    <rect x="24" y="216" width="248" height="96" rx="18" fill="#161B22" stroke="#2D333B"/>
-    <text x="40" y="242" fill="#E6EDF3" font-size="13">Try a 15-minute pan-seared salmon:</text>
-    <text x="40" y="262" fill="#E6EDF3" font-size="13">sear skin-side down, then finish with</text>
-    <text x="40" y="282" fill="#E6EDF3" font-size="13">a lemon-butter pan sauce. Want the</text>
-    <text x="40" y="302" fill="#E6EDF3" font-size="13">step-by-step?</text>
-    <!-- listening indicator + orb -->
-    <text x="160" y="452" fill="#8B949E" font-size="14" text-anchor="middle">Listening…</text>
-    <circle cx="160" cy="530" r="46" fill="#161B22" stroke="#3FB950" stroke-width="2.5"/>
-    <text x="160" y="541" fill="#E6EDF3" font-size="28" text-anchor="middle">🎙</text>
-    <!-- waveform hint -->
-    <g stroke="#3FB950" stroke-width="3" stroke-linecap="round" opacity="0.8">
-      <line x1="120" y1="472" x2="120" y2="480"/>
-      <line x1="132" y1="466" x2="132" y2="486"/>
-      <line x1="144" y1="470" x2="144" y2="482"/>
-      <line x1="156" y1="462" x2="156" y2="490"/>
-      <line x1="168" y1="468" x2="168" y2="484"/>
-      <line x1="180" y1="464" x2="180" y2="488"/>
-      <line x1="192" y1="471" x2="192" y2="481"/>
-      <line x1="204" y1="467" x2="204" y2="485"/>
+    <text x="24" y="72" fill="#8B949E" font-size="15">‹</text>
+    <text x="140" y="72" fill="#E6EDF3" font-size="17" font-weight="600">Voice</text>
+    <!-- floating segmented control -->
+    <rect x="60" y="88" width="200" height="38" rx="19" fill="#161B22" stroke="#2D333B"/>
+    <rect x="64" y="92" width="108" height="30" rx="15" fill="#E8A33D"/>
+    <text x="82" y="112" fill="#0D1117" font-size="12.5" font-weight="600">Conversation</text>
+    <text x="192" y="112" fill="#8B949E" font-size="12.5" font-weight="600">Meeting</text>
+    <!-- transcript: last exchange, large type -->
+    <text x="36" y="192" fill="#6E7681" font-size="10" font-weight="700" letter-spacing="1.5">YOU</text>
+    <text x="36" y="214" fill="#8B949E" font-size="15">What should I make for dinner</text>
+    <text x="36" y="235" fill="#8B949E" font-size="15">with salmon and lemons?</text>
+    <text x="36" y="282" fill="#E8A33D" font-size="10" font-weight="700" letter-spacing="1.5">MARMOT</text>
+    <text x="36" y="308" fill="#E6EDF3" font-size="17">Try a 15-minute pan-seared</text>
+    <text x="36" y="332" fill="#E6EDF3" font-size="17">salmon with a lemon-butter</text>
+    <text x="36" y="356" fill="#E6EDF3" font-size="17">pan sauce. Want the steps?</text>
+    <!-- waveform -->
+    <g fill="#3FB950">
+      <rect x="128" y="432" width="4" height="10" rx="2"/>
+      <rect x="138" y="424" width="4" height="26" rx="2"/>
+      <rect x="148" y="428" width="4" height="18" rx="2"/>
+      <rect x="158" y="418" width="4" height="34" rx="2"/>
+      <rect x="168" y="426" width="4" height="22" rx="2"/>
+      <rect x="178" y="421" width="4" height="30" rx="2"/>
+      <rect x="188" y="430" width="4" height="14" rx="2"/>
     </g>
-    <text x="160" y="606" fill="#6E7681" font-size="12" text-anchor="middle">Tap to stop · replies are spoken aloud</text>
+    <!-- orb with glow rings -->
+    <circle cx="160" cy="530" r="84" fill="url(#orbglow)"/>
+    <circle cx="160" cy="530" r="76" fill="none" stroke="#3FB950" stroke-opacity="0.35"/>
+    <circle cx="160" cy="530" r="64" fill="none" stroke="#3FB950" stroke-opacity="0.5"/>
+    <circle cx="160" cy="530" r="52" fill="#161B22" stroke="#3FB950" stroke-width="2"/>
+    <text x="160" y="542" font-size="30" text-anchor="middle">🎙</text>
+    <!-- status -->
+    <text x="160" y="622" fill="#8B949E" font-size="15" text-anchor="middle">Listening</text>
+    <rect x="118" y="632" width="84" height="1" rx="0.5" fill="#2D333B"/>
   </g>
 </svg>

@@ -101,7 +101,7 @@ approved plan.
 2. ✅ Voice dictation + spoken replies (OS ASR/TTS)
 3. ✅ Live conversation v1 (`VoiceSession` machine + Voice screen)
 4. ✅ Meeting mode v1 (continuous transcript → RAG, wake-phrase suggest cards)
-5. ⬜ Repo import v1 (tarball → RAG)
+5. ✅ Repo import v1 (tarball → RAG)
 6. ⬜ whisper.rn ASR upgrade + background audio (build-affecting)
 7. ⬜ File organization (Android SAF, plan/approve/undo)
 8. ⬜ isomorphic-git v2; neural TTS; diarization
