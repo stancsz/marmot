@@ -27,12 +27,12 @@
     <!-- assistant bubble -->
     <rect x="24" y="224" width="248" height="188" rx="18" fill="#161B22" stroke="#2D333B"/>
     <text x="40" y="252" fill="#E6EDF3" font-size="13">Here are three fun ones:</text>
-    <text x="40" y="280" fill="#E6EDF3" font-size="13">1. Bird feeder camera — motion-</text>
+    <text x="40" y="280" fill="#E6EDF3" font-size="13">1. <tspan font-weight="700">Bird feeder camera</tspan> — motion-</text>
     <text x="40" y="298" fill="#E6EDF3" font-size="13">triggered photos of visitors.</text>
-    <text x="40" y="326" fill="#E6EDF3" font-size="13">2. Network-wide ad blocker with</text>
-    <text x="40" y="344" fill="#E6EDF3" font-size="13">Pi-hole — 20 minute setup.</text>
-    <text x="40" y="372" fill="#E6EDF3" font-size="13">3. A tiny retro game console</text>
-    <text x="40" y="390" fill="#E6EDF3" font-size="13">with RetroPie.</text>
+    <text x="40" y="326" fill="#E6EDF3" font-size="13">2. <tspan font-weight="700">Pi-hole</tspan> — network-wide ad blocker,</text>
+    <text x="40" y="344" fill="#E6EDF3" font-size="13">install via <tspan font-family="Menlo,monospace" font-size="11.5" fill="#8B949E">curl pi-hole.net</tspan></text>
+    <text x="40" y="372" fill="#E6EDF3" font-size="13">3. <tspan font-weight="700">Retro game console</tspan> with</text>
+    <text x="40" y="390" fill="#E6EDF3" font-size="13">RetroPie.</text>
     <text x="40" y="404" fill="#6E7681" font-size="10">31.4 tok/s</text>
     <!-- streaming bubble -->
     <rect x="24" y="426" width="200" height="44" rx="18" fill="#161B22" stroke="#2D333B"/>

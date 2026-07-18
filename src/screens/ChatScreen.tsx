@@ -31,6 +31,7 @@ import { agentMemory, runAgentTask, verifyAgentAnswer } from '../lib/agentRuntim
 import { AgentCancelled, AgentStep, Plan, episodicSummary, markDone } from '../agent'
 import { CATALOG, getModel } from '../models/catalog'
 import { splitThinking } from '../lib/thinking'
+import MarkdownText from '../components/MarkdownText'
 import { Palette, radius, spacing, themedStyles } from '../theme'
 import { useTheme } from '../ThemeContext'
 import type { RootStackParamList } from '../navigation'
@@ -450,7 +451,11 @@ function Bubble({ message }: { message: ChatMessage }) {
   const verify = message.stats?.verify
   return (
     <View style={[styles.bubble, isUser ? styles.userBubble : styles.assistantBubble]}>
-      <Text style={styles.bubbleText}>{message.content}</Text>
+      {isUser ? (
+        <Text style={styles.bubbleText}>{message.content}</Text>
+      ) : (
+        <MarkdownText text={message.content} />
+      )}
       {message.stats?.tokensPerSecond ? (
         <Text style={styles.statsText}>
           {message.stats.tokensPerSecond.toFixed(1)} tok/s

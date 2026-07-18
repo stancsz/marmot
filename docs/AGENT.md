@@ -48,7 +48,13 @@ One intentional increment per iteration (per SYSTEM.md):
 - [x] Reflection/judge toggle: "Verify answers" switch in Settings runs `verifyAnswer` (reflect may revise → judge scores the survivor) after each agent reply; verdict badge (✓/⚠ score, revised flag) persists on the message; best-effort — a failed pass never loses the answer
 - [x] Semantic memory: `Embedder` interface + cosine retrieval (threshold 0.25) in MemoryStore; `engine.embedText` adapter over llama.rn `embedding()`; lazy backfill (≤5/retrieve) for entries stored while no model was loaded; graceful keyword fallback — all tested with a deterministic fake embedder
 - [x] Subagent orchestration: planner → per-step fresh-context executors (`EXECUTOR_MAX_STEPS` budget each, summaries-only context) → synthesizer → judge gate (tied to Verify answers, one bounded retry with judge feedback); ▶ subtask headers in the timeline; wired as the default path for multi-step agent tasks
-- [ ] On-device E2E: run the agent loop against a real downloaded model on hardware; record results here
+- [ ] On-device E2E: run the agent loop against a real downloaded model on hardware; record results here **(blocked: needs a physical device — `npx expo run:android`)**
+
+Polish (post-roadmap):
+
+- [x] Markdown rendering in assistant bubbles (`src/lib/markdown.ts` pure parser + `MarkdownText` themed renderer; headings, lists, fenced/inline code, bold/italic, tappable links)
+- [ ] Import a local `.gguf` from the Files app
+- [ ] Background downloads
 - [x] Chat import: Settings → Import chats picks a JSON export, validates it (`parseChatExport`), and merges by id (`mergeChats` — a stale backup never clobbers newer local history); confirm dialog shows added/updated/skipped counts
 
 ## Verification log
@@ -63,3 +69,4 @@ One intentional increment per iteration (per SYSTEM.md):
 | 2026-07-18 | Semantic memory: `npm test` 44/44 (adds cosine edge cases, meaning-based retrieval with zero keyword overlap, noise-threshold filtering, persisted lazy backfill, keyword fallback when embedder down). `tsc` + Android export clean. Caveat: `engine.embedText` over llama.rn `embedding()` returns null-safe fallback; whether chat-tuned GGUFs produce useful embeddings on-device is unverified until the hardware E2E item. |
 | 2026-07-18 | Subagent orchestration: `npm test` 49/49 (adds per-step execution with summary-forwarding, judge-gate reject→retry with feedback, accept passthrough, executor-budget behavior, degenerate-plan fallback). `tsc` + Android export clean. UI evidence: `docs/assets/screen-agent.svg` reworked with ▶ subtask executor sections. |
 | 2026-07-18 | Chat import: `npm test` 56/56 (adds export round-trip parse, friendly rejection of non-JSON/foreign/future-version files, malformed chat+message dropping with valid ones kept, merge add/update/skip semantics, stale-backup protection, recency sort). `tsc` + Android export clean. UI evidence: split Export/Import buttons in `docs/assets/screen-settings.svg`. |
+| 2026-07-18 | Markdown bubbles: `npm test` 64/64 (adds inline tokenizer tests incl. code-protects-markup, paragraph joining, heading/list parsing, fenced code verbatim + unterminated-fence safety, realistic reply end-to-end). `tsc` + Android export clean. UI evidence: bold/inline-code in `docs/assets/screen-chat.svg`. |
