@@ -34,9 +34,9 @@ actual memory so you know before downloading whether it will run comfortably.
 
 ## Screens
 
-| Home | Chat | Model library |
-| :---: | :---: | :---: |
-| <img src="docs/assets/screen-chats.svg" width="240" alt="Conversation list" /> | <img src="docs/assets/screen-chat.svg" width="240" alt="Streaming chat" /> | <img src="docs/assets/screen-models.svg" width="240" alt="Model library with downloads" /> |
+| Home | Chat | Model library | Export |
+| :---: | :---: | :---: | :---: |
+| <img src="docs/assets/screen-chats.svg" width="200" alt="Conversation list" /> | <img src="docs/assets/screen-chat.svg" width="200" alt="Streaming chat" /> | <img src="docs/assets/screen-models.svg" width="200" alt="Model library with downloads" /> | <img src="docs/assets/screen-export.svg" width="200" alt="Export a chat to Drive, OneDrive, or Files" /> |
 
 ## Features
 
