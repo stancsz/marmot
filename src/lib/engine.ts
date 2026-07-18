@@ -121,6 +121,22 @@ class LlamaEngine {
       await this.context.stopCompletion().catch(() => {})
     }
   }
+
+  /**
+   * Embed text with the loaded model, or null when unavailable (no model,
+   * busy, or the model doesn't support embeddings). Callers must treat
+   * null as "fall back to keyword retrieval".
+   */
+  async embedText(text: string): Promise<number[] | null> {
+    const ctx = this.context
+    if (!ctx || this.status !== 'ready') return null
+    try {
+      const result = await ctx.embedding(text)
+      return result.embedding?.length ? result.embedding : null
+    } catch {
+      return null
+    }
+  }
 }
 
 export const engine = new LlamaEngine()

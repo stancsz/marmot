@@ -59,6 +59,8 @@ export interface MemoryEntry {
   kind: MemoryKind
   text: string
   createdAt: number
+  /** semantic vector, present once an embedder has seen this entry */
+  embedding?: number[]
 }
 
 /** Minimal KV interface so the store works over AsyncStorage or a test map. */

@@ -48,8 +48,9 @@ export default function MemoryScreen() {
   return (
     <ScrollView style={styles.container} contentContainerStyle={{ padding: spacing.lg, paddingBottom: 60 }}>
       <Text style={styles.intro}>
-        The agent injects matching memories into its context when you use
-        Agent Mode. Everything stays on this device.
+        In Agent Mode, memories are recalled by meaning (semantic embeddings
+        from the loaded model) and injected into context. Everything stays on
+        this device.
       </Text>
 
       {/* add form (episodic is auto-captured, not hand-written) */}

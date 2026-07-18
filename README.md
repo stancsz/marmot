@@ -69,7 +69,9 @@ actual memory so you know before downloading whether it will run comfortably.
   pass after each agent reply, stamping a ✓/⚠ score badge on the message.
 - 🧠 **Memory** — the agent remembers facts about you and your projects
   (viewable and editable in Settings → Memory) and auto-captures one-line
-  summaries of past exchanges, injecting what's relevant into future runs.
+  summaries of past exchanges. Recall is semantic: memories are matched by
+  meaning using on-device embeddings from the loaded model, with keyword
+  fallback when no model is running.
 - 📤 **Export & share** — share a chat as Markdown or back up everything as
   JSON through the native share sheet (Google Drive, OneDrive, Files, email —
   no cloud SDKs, no OAuth, Marmot never holds a credential).

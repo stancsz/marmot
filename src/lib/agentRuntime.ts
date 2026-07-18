@@ -40,7 +40,20 @@ function engineLLM(settings: InferenceSettings): AgentLLM {
   }
 }
 
-export const agentMemory = new MemoryStore(AsyncStorage)
+/**
+ * Embeddings come from the loaded chat model; when none is loaded (or the
+ * model can't embed), MemoryStore falls back to keyword retrieval and
+ * backfills vectors lazily on later retrieves.
+ */
+const engineEmbedder = {
+  async embed(text: string): Promise<number[]> {
+    const vector = await engine.embedText(text)
+    if (!vector) throw new Error('embedding unavailable')
+    return vector
+  },
+}
+
+export const agentMemory = new MemoryStore(AsyncStorage, undefined, engineEmbedder)
 
 export async function runAgentTask(
   task: string,

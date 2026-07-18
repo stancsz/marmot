@@ -1,4 +1,5 @@
 import { KVStore, MemoryEntry, MemoryKind } from './types'
+import { Embedder, cosineSimilarity, roundVector } from './semantic'
 
 const MEMORY_KEY = 'marmot.agent.memory.v1'
 
@@ -23,8 +24,17 @@ export function episodicSummary(task: string, answer: string): string {
  * a deliberately simple local context engine (semantic embeddings via
  * llama.rn are a roadmap item).
  */
+/** semantic matches below this cosine are noise, not recall */
+const MIN_SEMANTIC_SCORE = 0.25
+/** cap embedding backfills per retrieve so recall never stalls the loop */
+const MAX_BACKFILL_PER_RETRIEVE = 5
+
 export class MemoryStore {
-  constructor(private kv: KVStore, private newId: () => string = defaultId) {}
+  constructor(
+    private kv: KVStore,
+    private newId: () => string = defaultId,
+    private embedder?: Embedder
+  ) {}
 
   private async load(): Promise<MemoryEntry[]> {
     try {
@@ -41,6 +51,13 @@ export class MemoryStore {
 
   async add(kind: MemoryKind, text: string, createdAt: number = Date.now()): Promise<MemoryEntry> {
     const entry: MemoryEntry = { id: this.newId(), kind, text: text.trim(), createdAt }
+    if (this.embedder) {
+      try {
+        entry.embedding = roundVector(await this.embedder.embed(entry.text))
+      } catch {
+        // no model loaded / embedding unsupported — backfilled on retrieve
+      }
+    }
     let entries = await this.load()
     entries.push(entry)
     // keep episodic memory bounded: drop the oldest beyond the cap
@@ -66,10 +83,46 @@ export class MemoryStore {
     await this.save(entries.filter((e) => e.id !== id))
   }
 
-  /** keyword-overlap retrieval, recency as tiebreak */
+  /** semantic (cosine) retrieval when an embedder is available; keyword fallback */
   async retrieve(query: string, k = 4): Promise<MemoryEntry[]> {
-    const words = tokenize(query)
     const entries = await this.load()
+    if (this.embedder) {
+      try {
+        const queryVector = await this.embedder.embed(query)
+        // lazily backfill vectors for entries stored while no model was loaded
+        let backfilled = 0
+        for (const e of entries) {
+          if (!e.embedding && backfilled < MAX_BACKFILL_PER_RETRIEVE) {
+            try {
+              e.embedding = roundVector(await this.embedder.embed(e.text))
+              backfilled++
+            } catch {
+              break
+            }
+          }
+        }
+        if (backfilled > 0) await this.save(entries)
+
+        const scored = entries
+          .map((e) => ({
+            e,
+            // entries still lacking a vector fall back to a 0..1 keyword score
+            score: e.embedding
+              ? cosineSimilarity(queryVector, e.embedding)
+              : keywordScore01(query, e.text),
+          }))
+          .filter((s) => s.score >= MIN_SEMANTIC_SCORE)
+          .sort((a, b) => b.score - a.score || b.e.createdAt - a.e.createdAt)
+        return scored.slice(0, k).map((s) => s.e)
+      } catch {
+        // embedder unavailable right now — fall through to keyword
+      }
+    }
+    return this.keywordRetrieve(query, k, entries)
+  }
+
+  private keywordRetrieve(query: string, k: number, entries: MemoryEntry[]): MemoryEntry[] {
+    const words = tokenize(query)
     const scored = entries
       .map((e) => {
         const entryWords = new Set(tokenize(e.text))
@@ -87,6 +140,14 @@ export class MemoryStore {
     if (hits.length === 0) return ''
     return `Relevant memory:\n${hits.map((h) => `- (${h.kind}) ${h.text}`).join('\n')}`
   }
+}
+
+function keywordScore01(query: string, text: string): number {
+  const words = tokenize(query)
+  if (words.length === 0) return 0
+  const entryWords = new Set(tokenize(text))
+  const overlap = words.reduce((acc, w) => acc + (entryWords.has(w) ? 1 : 0), 0)
+  return overlap / words.length
 }
 
 function tokenize(text: string): string[] {

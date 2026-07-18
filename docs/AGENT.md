@@ -21,7 +21,7 @@ runnable evidence (tests or an on-device screenshot).
 | Planning | `src/agent/planner.ts` — plan → execute → update; JSON/numbered-list parsing, step tracking | ✅ core, tested | `jest`: planner tests |
 | Reflection | `src/agent/reflection.ts` `reflect()` — self-critique with optional revision, fail-open on garbage | ✅ core, tested | `jest`: reflection tests |
 | Judge | `src/agent/reflection.ts` `judge()` — independent accept/score verdict, fail-closed on garbage | ✅ core, tested | `jest`: judge tests |
-| Context | `search_chats` + memory retrieval (keyword). Semantic embeddings via llama.rn `embedding()` planned | 🔶 keyword only | `jest`: ranking tests |
+| Context | Semantic memory retrieval — llama.rn `embedding()` + cosine ranking with a noise threshold, lazy vector backfill, and keyword fallback when no model is loaded; `search_chats` stays keyword | ✅ core, tested | `jest`: semantic tests |
 | Policies | `src/agent/types.ts` `AgentPolicies` — maxSteps, tool allowlist, observation caps | ✅ core, tested | `jest`: policy tests |
 | Subagents | Planner/executor/judge are separate prompts today; parallel worker orchestration planned | 🔶 partial | planner/judge are distinct calls |
 
@@ -46,7 +46,7 @@ One intentional increment per iteration (per SYSTEM.md):
 - [x] Memory UI: `MemoryScreen` (Settings → Manage memory) with add/delete grouped by kind; deterministic episodic auto-capture after every exchange (`episodicSummary`, tested) with a 50-entry cap (tested)
 - [x] Plan panel: `shouldPlan` gates a planner round-trip for multi-step tasks; the plan is injected into the loop prompt and the model reports completions via `done_step` in its JSON, driving live ☑ check-offs in the chat UI (protocol + gating tested)
 - [x] Reflection/judge toggle: "Verify answers" switch in Settings runs `verifyAnswer` (reflect may revise → judge scores the survivor) after each agent reply; verdict badge (✓/⚠ score, revised flag) persists on the message; best-effort — a failed pass never loses the answer
-- [ ] Semantic memory: llama.rn `embedding()` + cosine retrieval replacing keyword-only recall
+- [x] Semantic memory: `Embedder` interface + cosine retrieval (threshold 0.25) in MemoryStore; `engine.embedText` adapter over llama.rn `embedding()`; lazy backfill (≤5/retrieve) for entries stored while no model was loaded; graceful keyword fallback — all tested with a deterministic fake embedder
 - [ ] Subagent orchestration: planner → per-step executor calls with fresh context; judge gate before final answer
 - [ ] On-device E2E: run the agent loop against a real downloaded model on hardware; record results here
 - [ ] Chat import (restores JSON exports)
@@ -60,3 +60,4 @@ One intentional increment per iteration (per SYSTEM.md):
 | 2026-07-18 | Memory UI + episodic capture: `npm test` 29/29 (adds episodicSummary clipping test and EPISODIC_CAP pruning test). `tsc` + Android export clean. UI evidence: `docs/assets/screen-memory.svg`. |
 | 2026-07-18 | Plan panel: `npm test` 34/34 (adds plan-prompt injection, plan_check emission, out-of-plan done_step rejection, done_step snake/camel parsing, shouldPlan gating). `tsc` + Android export clean. UI evidence: updated `docs/assets/screen-agent.svg` with the live plan panel. |
 | 2026-07-18 | Verify answers: `npm test` 38/38 (adds verifyAnswer tests: pass-through, revision-adopted-and-judged, judge rejection surfaced, empty revision ignored). `tsc` + Android export clean. UI evidence: verified badge in `docs/assets/screen-agent.svg`. |
+| 2026-07-18 | Semantic memory: `npm test` 44/44 (adds cosine edge cases, meaning-based retrieval with zero keyword overlap, noise-threshold filtering, persisted lazy backfill, keyword fallback when embedder down). `tsc` + Android export clean. Caveat: `engine.embedText` over llama.rn `embedding()` returns null-safe fallback; whether chat-tuned GGUFs produce useful embeddings on-device is unverified until the hardware E2E item. |
