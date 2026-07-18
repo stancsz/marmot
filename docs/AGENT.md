@@ -53,7 +53,7 @@ One intentional increment per iteration (per SYSTEM.md):
 Polish (post-roadmap):
 
 - [x] Markdown rendering in assistant bubbles (`src/lib/markdown.ts` pure parser + `MarkdownText` themed renderer; headings, lists, fenced/inline code, bold/italic, tappable links)
-- [ ] Import a local `.gguf` from the Files app
+- [x] Import a local `.gguf` from the Files app: "Import .gguf" in the model library copies the file into the models dir, validates size post-copy (providers may not report it), derives name/quant/id from the filename (pure, tested incl. collisions), and imported models are first-class — selectable in the chat strip, RAM-fit badged, deletable, engine-loaded via the same `modelPath`
 - [ ] Background downloads
 - [x] Chat import: Settings → Import chats picks a JSON export, validates it (`parseChatExport`), and merges by id (`mergeChats` — a stale backup never clobbers newer local history); confirm dialog shows added/updated/skipped counts
 
@@ -70,3 +70,4 @@ Polish (post-roadmap):
 | 2026-07-18 | Subagent orchestration: `npm test` 49/49 (adds per-step execution with summary-forwarding, judge-gate reject→retry with feedback, accept passthrough, executor-budget behavior, degenerate-plan fallback). `tsc` + Android export clean. UI evidence: `docs/assets/screen-agent.svg` reworked with ▶ subtask executor sections. |
 | 2026-07-18 | Chat import: `npm test` 56/56 (adds export round-trip parse, friendly rejection of non-JSON/foreign/future-version files, malformed chat+message dropping with valid ones kept, merge add/update/skip semantics, stale-backup protection, recency sort). `tsc` + Android export clean. UI evidence: split Export/Import buttons in `docs/assets/screen-settings.svg`. |
 | 2026-07-18 | Markdown bubbles: `npm test` 64/64 (adds inline tokenizer tests incl. code-protects-markup, paragraph joining, heading/list parsing, fenced code verbatim + unterminated-fence safety, realistic reply end-to-end). `tsc` + Android export clean. UI evidence: bold/inline-code in `docs/assets/screen-chat.svg`. |
+| 2026-07-18 | .gguf import: `npm test` 69/69 (adds name/quant/slug derivation, extension + min-size rejection, IQ-quant detection, id collision suffixing, hostile-filename survival). `tsc` + Android export clean. UI evidence: Import link + IMPORTED section in `docs/assets/screen-models.svg`. |

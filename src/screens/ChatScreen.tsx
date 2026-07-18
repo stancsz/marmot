@@ -15,7 +15,7 @@ import { useFocusEffect, useNavigation, useRoute, RouteProp } from '@react-navig
 import { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import { useHeaderHeight } from '@react-navigation/elements'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { Chat, ChatMessage, InferenceSettings, ModelId } from '../types'
+import { Chat, ChatMessage, InferenceSettings, ModelId, ModelSpec } from '../types'
 import {
   chatTitleFrom,
   loadChats,
@@ -29,7 +29,8 @@ import { downloads } from '../lib/downloads'
 import { shareChatAsMarkdown } from '../lib/exportShare'
 import { agentMemory, runAgentTask, verifyAgentAnswer } from '../lib/agentRuntime'
 import { AgentCancelled, AgentStep, Plan, episodicSummary, markDone } from '../agent'
-import { CATALOG, getModel } from '../models/catalog'
+import { CATALOG } from '../models/catalog'
+import { customModelsCache, loadCustomModels, resolveModel } from '../lib/customModels'
 import { splitThinking } from '../lib/thinking'
 import MarkdownText from '../components/MarkdownText'
 import { Palette, radius, spacing, themedStyles } from '../theme'
@@ -56,6 +57,7 @@ export default function ChatScreen() {
   const [phase, setPhase] = useState<'idle' | 'loading-model' | 'generating'>('idle')
   const [error, setError] = useState<string | null>(null)
   const [downloadedIds, setDownloadedIds] = useState<ModelId[]>([])
+  const [customModels, setCustomModels] = useState<ModelSpec[]>([])
   const [agentMode, setAgentMode] = useState(false)
   const [agentSteps, setAgentSteps] = useState<AgentStep[]>([])
   const [agentPlan, setAgentPlan] = useState<Plan | null>(null)
@@ -71,19 +73,22 @@ export default function ChatScreen() {
     let unsub: (() => void) | undefined
     ;(async () => {
       await downloads.init()
+      const custom = await loadCustomModels() // hydrate before the adopt-guard runs
       if (cancelled) return
+      setCustomModels(custom)
       unsub = downloads.subscribe(() => {
         const ids = downloads.downloadedModelIds()
         setDownloadedIds(ids)
         // adopt an available model if this chat has none, or if its model
-        // was deleted from the device
+        // was deleted from the device — imported models count as available
+        const knownIds = [...ids, ...customModelsCache().map((m) => m.id)]
         const current = chatRef.current
         if (
           current &&
-          ids.length > 0 &&
-          (!current.modelId || !ids.includes(current.modelId))
+          knownIds.length > 0 &&
+          (!current.modelId || !knownIds.includes(current.modelId))
         ) {
-          const next = { ...current, modelId: ids[0] }
+          const next = { ...current, modelId: knownIds[0] }
           setChat(next)
           saveChat(next)
         }
@@ -118,12 +123,13 @@ export default function ChatScreen() {
   useFocusEffect(
     useCallback(() => {
       loadSettings().then(setSettings)
+      loadCustomModels().then(setCustomModels)
     }, [])
   )
 
   const hasMessages = (chat?.messages.length ?? 0) > 0
   useEffect(() => {
-    const model = getModel(chat?.modelId)
+    const model = resolveModel(chat?.modelId)
     navigation.setOptions({
       title: model ? model.name : 'Chat',
       headerRight: hasMessages
@@ -296,8 +302,8 @@ export default function ChatScreen() {
     )
   }
 
-  // No model downloaded at all → point to the library
-  if (downloadedIds.length === 0) {
+  // No model downloaded or imported at all → point to the library
+  if (downloadedIds.length === 0 && customModels.length === 0) {
     return (
       <View style={[styles.container, styles.center, { padding: spacing.xl }]}>
         <Text style={styles.bigText}>No models yet</Text>
@@ -336,7 +342,7 @@ export default function ChatScreen() {
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.modelStrip}
         >
-          {CATALOG.filter((m) => downloadedIds.includes(m.id)).map((m) => {
+          {[...CATALOG.filter((m) => downloadedIds.includes(m.id)), ...customModels].map((m) => {
             const active = chat.modelId === m.id
             return (
               <Pressable
@@ -374,7 +380,7 @@ export default function ChatScreen() {
         ListFooterComponent={
           <>
             {phase === 'loading-model' && (
-              <StatusRow text={`Loading ${getModel(chat.modelId)?.name ?? 'model'}…`} spinner />
+              <StatusRow text={`Loading ${resolveModel(chat.modelId)?.name ?? 'model'}…`} spinner />
             )}
             {agentPlan && (
               <View style={styles.planPanel}>

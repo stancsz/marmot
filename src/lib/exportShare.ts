@@ -1,7 +1,7 @@
 import * as FileSystem from 'expo-file-system/legacy'
 import * as Sharing from 'expo-sharing'
 import { Chat } from '../types'
-import { getModel } from '../models/catalog'
+import { resolveModel } from './customModels'
 
 /**
  * Chat export goes through the OS share sheet, so users can send to Google
@@ -18,7 +18,7 @@ function safeFilename(name: string): string {
 }
 
 function chatToMarkdown(chat: Chat): string {
-  const model = getModel(chat.modelId)
+  const model = resolveModel(chat.modelId)
   const lines: string[] = [
     `# ${chat.title}`,
     '',

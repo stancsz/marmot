@@ -13,7 +13,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Chat } from '../types'
 import { deleteChat, loadChats } from '../lib/chatStore'
 import { shareChatAsJson, shareChatAsMarkdown } from '../lib/exportShare'
-import { getModel } from '../models/catalog'
+import { loadCustomModels, resolveModel } from '../lib/customModels'
 import { Palette, radius, spacing, themedStyles } from '../theme'
 import { useTheme } from '../ThemeContext'
 import type { RootStackParamList } from '../navigation'
@@ -29,7 +29,8 @@ export default function ChatListScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      loadChats().then(setChats)
+      // hydrate the custom-model cache first so imported-model badges resolve
+      loadCustomModels().then(() => loadChats().then(setChats))
     }, [])
   )
 
@@ -80,7 +81,7 @@ export default function ChatListScreen() {
           </View>
         }
         renderItem={({ item }) => {
-          const model = getModel(item.modelId)
+          const model = resolveModel(item.modelId)
           const last = item.messages[item.messages.length - 1]
           return (
             <Pressable

@@ -7,9 +7,11 @@ import {
   Text,
   View,
 } from 'react-native'
+import * as DocumentPicker from 'expo-document-picker'
 import { CATALOG, formatBytes } from '../models/catalog'
 import { downloads } from '../lib/downloads'
 import { engine } from '../lib/engine'
+import { importModelFile, loadCustomModels, removeCustomModel } from '../lib/customModels'
 import { ramFit, ramFitLabel, totalRamLabel } from '../lib/deviceMemory'
 import { DownloadState, ModelId, ModelSpec } from '../types'
 import { Palette, radius, spacing, themedStyles } from '../theme'
@@ -20,11 +22,30 @@ export default function ModelsScreen() {
   const styles = getStyles(colors)
   const [states, setStates] = useState<Record<ModelId, DownloadState>>({})
   const [freeBytes, setFreeBytes] = useState<number | null>(null)
+  const [customList, setCustomList] = useState<ModelSpec[]>([])
+  const [importing, setImporting] = useState(false)
   const statusSignature = useRef('')
+
+  const importGguf = async () => {
+    try {
+      const picked = await DocumentPicker.getDocumentAsync({ copyToCacheDirectory: false })
+      if (picked.canceled || !picked.assets?.[0]) return
+      const asset = picked.assets[0]
+      setImporting(true)
+      const spec = await importModelFile(asset.uri, asset.name ?? 'model.gguf')
+      setCustomList(await loadCustomModels())
+      Alert.alert('Model imported', `${spec.name} (${formatBytes(spec.sizeBytes)}) is ready to use.`)
+    } catch (e: any) {
+      Alert.alert('Import failed', e?.message ?? 'Could not import that file.')
+    } finally {
+      setImporting(false)
+    }
+  }
 
   useEffect(() => {
     let cancelled = false
     let unsub: (() => void) | undefined
+    loadCustomModels().then((list) => !cancelled && setCustomList(list))
     downloads.init().then(() => {
       if (cancelled) return
       unsub = downloads.subscribe((next) => {
@@ -54,6 +75,9 @@ export default function ModelsScreen() {
           {totalRamLabel()}
           {freeBytes != null ? `  ·  ${formatBytes(freeBytes)} free` : ''}
         </Text>
+        <Pressable onPress={importGguf} disabled={importing} hitSlop={8}>
+          <Text style={styles.importLink}>{importing ? 'Importing…' : 'Import .gguf'}</Text>
+        </Pressable>
       </View>
 
       {downloaded.length > 0 && (
@@ -61,6 +85,19 @@ export default function ModelsScreen() {
           <Text style={styles.sectionTitle}>On this device</Text>
           {downloaded.map((m) => (
             <ModelCard key={m.id} spec={m} state={states[m.id]} />
+          ))}
+        </>
+      )}
+
+      {customList.length > 0 && (
+        <>
+          <Text style={styles.sectionTitle}>Imported</Text>
+          {customList.map((m) => (
+            <CustomCard
+              key={m.id}
+              spec={m}
+              onRemoved={() => loadCustomModels().then(setCustomList)}
+            />
           ))}
         </>
       )}
@@ -157,6 +194,49 @@ function ModelCard({ spec, state }: { spec: ModelSpec; state?: DownloadState }) 
   )
 }
 
+function CustomCard({ spec, onRemoved }: { spec: ModelSpec; onRemoved: () => void }) {
+  const { colors } = useTheme()
+  const styles = getStyles(colors)
+  const fit = ramFit(spec.sizeBytes)
+  const fitColor = fit === 'great' ? colors.green : fit === 'ok' ? colors.yellow : colors.red
+
+  const confirmDelete = () => {
+    Alert.alert('Delete model?', `${spec.name} (${formatBytes(spec.sizeBytes)}) will be removed from this device.`, [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: async () => {
+          await removeCustomModel(spec.id)
+          onRemoved()
+        },
+      },
+    ])
+  }
+
+  return (
+    <View style={styles.card}>
+      <View style={styles.cardHeader}>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.cardTitle}>{spec.name}</Text>
+          <Text style={styles.cardSub}>
+            {spec.family} · {spec.quant} · {formatBytes(spec.sizeBytes)}
+          </Text>
+        </View>
+        {fit !== 'unknown' && (
+          <Text style={[styles.fitBadge, { color: fitColor, borderColor: fitColor }]}>
+            {ramFitLabel(fit)}
+          </Text>
+        )}
+      </View>
+      <Text style={styles.cardDesc}>{spec.description}</Text>
+      <View style={styles.btnRow}>
+        <Btn label="Delete" onPress={confirmDelete} danger />
+      </View>
+    </View>
+  )
+}
+
 function Btn({
   label,
   onPress,
@@ -192,8 +272,14 @@ function Btn({
 const getStyles = themedStyles((colors: Palette) =>
   StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
-  headerRow: { marginBottom: spacing.sm },
+  headerRow: {
+    marginBottom: spacing.sm,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
   headerHint: { color: colors.textFaint, fontSize: 13 },
+  importLink: { color: colors.accent, fontSize: 13, fontWeight: '600' },
   sectionTitle: {
     color: colors.textDim,
     fontSize: 13,

@@ -96,7 +96,9 @@ All Apache 2.0. Q4_K_M GGUF builds (Gemma 4 E4B ships as Q3_K_M to stay
 phone-sized) from [unsloth](https://huggingface.co/unsloth), with URLs and
 exact byte sizes verified against the hosted files. Rankings from
 [Artificial Analysis](https://artificialanalysis.ai) and per-tier benchmark
-comparisons; re-evaluated as new models ship.
+comparisons; re-evaluated as new models ship. Beyond the catalog, any local
+`.gguf` can be imported from the Files app ("Import .gguf" in the model
+library) and used as a first-class model.
 
 ## Getting started
 
@@ -172,7 +174,7 @@ depend on it.
 
 - [x] Markdown rendering in chat bubbles
 - [x] Import chats back from a JSON export
-- [ ] Import any local `.gguf` from the Files app
+- [x] Import any local `.gguf` from the Files app
 - [ ] Background downloads
 - [ ] Android GPU (OpenCL/Vulkan) inference where supported
 - [ ] Prompt templates / saved personas
