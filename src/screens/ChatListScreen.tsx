@@ -14,7 +14,8 @@ import { Chat } from '../types'
 import { deleteChat, loadChats } from '../lib/chatStore'
 import { shareChatAsJson, shareChatAsMarkdown } from '../lib/exportShare'
 import { getModel } from '../models/catalog'
-import { colors, radius, spacing } from '../theme'
+import { Palette, radius, spacing, themedStyles } from '../theme'
+import { useTheme } from '../ThemeContext'
 import type { RootStackParamList } from '../navigation'
 
 type Nav = NativeStackNavigationProp<RootStackParamList>
@@ -22,6 +23,8 @@ type Nav = NativeStackNavigationProp<RootStackParamList>
 export default function ChatListScreen() {
   const navigation = useNavigation<Nav>()
   const insets = useSafeAreaInsets()
+  const { colors } = useTheme()
+  const styles = getStyles(colors)
   const [chats, setChats] = useState<Chat[]>([])
 
   useFocusEffect(
@@ -121,66 +124,68 @@ export default function ChatListScreen() {
   )
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.bg },
-  empty: { alignItems: 'center', paddingTop: 80, gap: spacing.md },
-  emptyTitle: { color: colors.text, fontSize: 32, fontWeight: '700' },
-  emptyText: {
-    color: colors.textDim,
-    fontSize: 15,
-    textAlign: 'center',
-    lineHeight: 22,
-    maxWidth: 300,
-  },
-  primaryBtn: {
-    marginTop: spacing.md,
-    backgroundColor: colors.accent,
-    paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.md,
-    borderRadius: radius.pill,
-  },
-  primaryBtnText: { color: colors.accentText, fontWeight: '700', fontSize: 16 },
-  card: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: spacing.lg,
-    marginBottom: spacing.md,
-    gap: spacing.xs,
-  },
-  cardTitle: { color: colors.text, fontSize: 16, fontWeight: '600' },
-  cardPreview: { color: colors.textDim, fontSize: 13, lineHeight: 18 },
-  cardMeta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: spacing.xs,
-  },
-  badge: {
-    color: colors.accent,
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  cardDate: { color: colors.textFaint, fontSize: 12 },
-  fabRow: {
-    position: 'absolute',
-    right: spacing.lg,
-    flexDirection: 'row',
-    gap: spacing.md,
-  },
-  fab: {
-    backgroundColor: colors.accent,
-    paddingHorizontal: spacing.xl,
-    paddingVertical: 14,
-    borderRadius: radius.pill,
-    elevation: 4,
-  },
-  fabText: { color: colors.accentText, fontWeight: '700', fontSize: 15 },
-  fabSecondary: {
-    backgroundColor: colors.surfaceAlt,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  fabSecondaryText: { color: colors.text, fontWeight: '600', fontSize: 15 },
-})
+const getStyles = themedStyles((colors: Palette) =>
+  StyleSheet.create({
+    container: { flex: 1, backgroundColor: colors.bg },
+    empty: { alignItems: 'center', paddingTop: 80, gap: spacing.md },
+    emptyTitle: { color: colors.text, fontSize: 32, fontWeight: '700' },
+    emptyText: {
+      color: colors.textDim,
+      fontSize: 15,
+      textAlign: 'center',
+      lineHeight: 22,
+      maxWidth: 300,
+    },
+    primaryBtn: {
+      marginTop: spacing.md,
+      backgroundColor: colors.accent,
+      paddingHorizontal: spacing.xl,
+      paddingVertical: spacing.md,
+      borderRadius: radius.pill,
+    },
+    primaryBtnText: { color: colors.accentText, fontWeight: '700', fontSize: 16 },
+    card: {
+      backgroundColor: colors.surface,
+      borderRadius: radius.md,
+      borderWidth: 1,
+      borderColor: colors.border,
+      padding: spacing.lg,
+      marginBottom: spacing.md,
+      gap: spacing.xs,
+    },
+    cardTitle: { color: colors.text, fontSize: 16, fontWeight: '600' },
+    cardPreview: { color: colors.textDim, fontSize: 13, lineHeight: 18 },
+    cardMeta: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginTop: spacing.xs,
+    },
+    badge: {
+      color: colors.accent,
+      fontSize: 12,
+      fontWeight: '600',
+    },
+    cardDate: { color: colors.textFaint, fontSize: 12 },
+    fabRow: {
+      position: 'absolute',
+      right: spacing.lg,
+      flexDirection: 'row',
+      gap: spacing.md,
+    },
+    fab: {
+      backgroundColor: colors.accent,
+      paddingHorizontal: spacing.xl,
+      paddingVertical: 14,
+      borderRadius: radius.pill,
+      elevation: 4,
+    },
+    fabText: { color: colors.accentText, fontWeight: '700', fontSize: 15 },
+    fabSecondary: {
+      backgroundColor: colors.surfaceAlt,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    fabSecondaryText: { color: colors.text, fontWeight: '600', fontSize: 15 },
+  })
+)

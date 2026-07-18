@@ -9,7 +9,7 @@
     <rect x="256" y="26" width="24" height="12" rx="3" fill="none" stroke="#8B949E"/>
     <rect x="258" y="28" width="16" height="8" rx="1.5" fill="#8B949E"/>
     <!-- header -->
-    <text x="24" y="76" fill="#E6EDF3" font-size="22" font-weight="700">Marmot</text>
+    <text x="24" y="74" fill="#E6EDF3" font-size="17" font-weight="600">Marmot</text>
     <text x="240" y="74" fill="#8B949E" font-size="13">Settings</text>
     <!-- chat cards (dimmed behind the sheet) -->
     <g opacity="0.35">

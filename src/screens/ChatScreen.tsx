@@ -28,7 +28,8 @@ import { downloads } from '../lib/downloads'
 import { shareChatAsMarkdown } from '../lib/exportShare'
 import { CATALOG, getModel } from '../models/catalog'
 import { splitThinking } from '../lib/thinking'
-import { colors, radius, spacing } from '../theme'
+import { Palette, radius, spacing, themedStyles } from '../theme'
+import { useTheme } from '../ThemeContext'
 import type { RootStackParamList } from '../navigation'
 
 type Nav = NativeStackNavigationProp<RootStackParamList>
@@ -41,6 +42,8 @@ export default function ChatScreen() {
   const route = useRoute<Route>()
   const headerHeight = useHeaderHeight()
   const insets = useSafeAreaInsets()
+  const { colors } = useTheme()
+  const styles = getStyles(colors)
   const [booted, setBooted] = useState(false)
   const [chat, setChat] = useState<Chat | null>(null)
   const [settings, setSettings] = useState<InferenceSettings | null>(null)
@@ -127,7 +130,7 @@ export default function ChatScreen() {
           )
         : undefined,
     })
-  }, [chat?.modelId, hasMessages])
+  }, [chat?.modelId, hasMessages, colors])
 
   const persist = useCallback(async (next: Chat) => {
     setChat(next)
@@ -308,6 +311,8 @@ export default function ChatScreen() {
 }
 
 function Bubble({ message }: { message: ChatMessage }) {
+  const { colors } = useTheme()
+  const styles = getStyles(colors)
   const isUser = message.role === 'user'
   return (
     <View style={[styles.bubble, isUser ? styles.userBubble : styles.assistantBubble]}>
@@ -323,6 +328,8 @@ function Bubble({ message }: { message: ChatMessage }) {
 }
 
 function StatusRow({ text, spinner }: { text: string; spinner?: boolean }) {
+  const { colors } = useTheme()
+  const styles = getStyles(colors)
   return (
     <View style={styles.statusRow}>
       {spinner && <ActivityIndicator size="small" color={colors.accent} />}
@@ -331,7 +338,8 @@ function StatusRow({ text, spinner }: { text: string; spinner?: boolean }) {
   )
 }
 
-const styles = StyleSheet.create({
+const getStyles = themedStyles((colors: Palette) =>
+  StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
   center: { alignItems: 'center', justifyContent: 'center', gap: spacing.md },
   bigText: { color: colors.text, fontSize: 22, fontWeight: '700' },
@@ -421,3 +429,4 @@ const styles = StyleSheet.create({
   stopBtn: { backgroundColor: colors.red },
   sendBtnText: { color: colors.accentText, fontWeight: '700', fontSize: 15 },
 })
+)

@@ -11,11 +11,14 @@ import {
 import { InferenceSettings } from '../types'
 import { DEFAULT_SETTINGS, loadChats, loadSettings, saveSettings } from '../lib/chatStore'
 import { shareAllChatsAsJson } from '../lib/exportShare'
-import { colors, radius, spacing } from '../theme'
+import { Palette, radius, spacing, themedStyles } from '../theme'
+import { ThemeMode, useTheme } from '../ThemeContext'
 
 const CONTEXT_OPTIONS = [2048, 4096, 8192]
 
 export default function SettingsScreen() {
+  const { colors, mode, setMode } = useTheme()
+  const styles = getStyles(colors)
   const [settings, setSettings] = useState<InferenceSettings | null>(null)
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const pending = useRef<InferenceSettings | null>(null)
@@ -46,6 +49,31 @@ export default function SettingsScreen() {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={{ padding: spacing.lg }}>
+      <Text style={styles.rowLabel}>Appearance</Text>
+      <Text style={styles.rowHint}>Dark, light, or follow your device setting.</Text>
+      <View style={styles.segmentRow}>
+        {(
+          [
+            { key: 'system', label: 'System' },
+            { key: 'dark', label: 'Dark' },
+            { key: 'light', label: 'Light' },
+          ] as { key: ThemeMode; label: string }[]
+        ).map(({ key, label }) => {
+          const active = mode === key
+          return (
+            <Pressable
+              key={key}
+              style={[styles.segment, active && styles.segmentActive]}
+              onPress={() => setMode(key)}
+            >
+              <Text style={[styles.segmentText, active && styles.segmentTextActive]}>
+                {label}
+              </Text>
+            </Pressable>
+          )
+        })}
+      </View>
+
       <Stepper
         label="Temperature"
         hint="Higher = more creative, lower = more focused"
@@ -151,6 +179,8 @@ function Stepper({
   onChange: (v: number) => void
   step: number
 }) {
+  const { colors } = useTheme()
+  const styles = getStyles(colors)
   return (
     <View style={styles.stepperRow}>
       <View style={{ flex: 1 }}>
@@ -170,7 +200,8 @@ function Stepper({
   )
 }
 
-const styles = StyleSheet.create({
+const getStyles = themedStyles((colors: Palette) =>
+  StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
   stepperRow: {
     flexDirection: 'row',
@@ -237,3 +268,4 @@ const styles = StyleSheet.create({
   resetBtn: { alignItems: 'center', padding: spacing.md, marginBottom: 40 },
   resetText: { color: colors.red, fontSize: 14, fontWeight: '600' },
 })
+)

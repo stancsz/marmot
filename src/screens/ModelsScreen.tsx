@@ -12,9 +12,12 @@ import { downloads } from '../lib/downloads'
 import { engine } from '../lib/engine'
 import { ramFit, ramFitLabel, totalRamLabel } from '../lib/deviceMemory'
 import { DownloadState, ModelId, ModelSpec } from '../types'
-import { colors, radius, spacing } from '../theme'
+import { Palette, radius, spacing, themedStyles } from '../theme'
+import { useTheme } from '../ThemeContext'
 
 export default function ModelsScreen() {
+  const { colors } = useTheme()
+  const styles = getStyles(colors)
   const [states, setStates] = useState<Record<ModelId, DownloadState>>({})
   const [freeBytes, setFreeBytes] = useState<number | null>(null)
   const statusSignature = useRef('')
@@ -76,6 +79,8 @@ export default function ModelsScreen() {
 }
 
 function ModelCard({ spec, state }: { spec: ModelSpec; state?: DownloadState }) {
+  const { colors } = useTheme()
+  const styles = getStyles(colors)
   const status = state?.status ?? 'idle'
   const fit = ramFit(spec.sizeBytes)
   const fitColor =
@@ -163,6 +168,8 @@ function Btn({
   primary?: boolean
   danger?: boolean
 }) {
+  const { colors } = useTheme()
+  const styles = getStyles(colors)
   return (
     <Pressable
       style={[styles.btn, primary && styles.btnPrimary, danger && styles.btnDanger]}
@@ -182,7 +189,8 @@ function Btn({
   )
 }
 
-const styles = StyleSheet.create({
+const getStyles = themedStyles((colors: Palette) =>
+  StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
   headerRow: { marginBottom: spacing.sm },
   headerHint: { color: colors.textFaint, fontSize: 13 },
@@ -250,3 +258,4 @@ const styles = StyleSheet.create({
     marginBottom: 40,
   },
 })
+)

@@ -1,40 +1,41 @@
 import React from 'react'
 import { StatusBar } from 'expo-status-bar'
 import { Pressable, Text } from 'react-native'
-import { DarkTheme, NavigationContainer } from '@react-navigation/native'
+import { DarkTheme, DefaultTheme, NavigationContainer } from '@react-navigation/native'
 import { createNativeStackNavigator } from '@react-navigation/native-stack'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 import ChatListScreen from './src/screens/ChatListScreen'
 import ChatScreen from './src/screens/ChatScreen'
 import ModelsScreen from './src/screens/ModelsScreen'
 import SettingsScreen from './src/screens/SettingsScreen'
-import { colors } from './src/theme'
+import { ThemeProvider, useTheme } from './src/ThemeContext'
 import type { RootStackParamList } from './src/navigation'
 
 const Stack = createNativeStackNavigator<RootStackParamList>()
 
-const theme = {
-  ...DarkTheme,
-  colors: {
-    ...DarkTheme.colors,
-    background: colors.bg,
-    card: colors.bg,
-    text: colors.text,
-    border: colors.border,
-    primary: colors.accent,
-  },
-}
+function AppInner() {
+  const { colors, resolved } = useTheme()
+  const base = resolved === 'light' ? DefaultTheme : DarkTheme
+  const navTheme = {
+    ...base,
+    colors: {
+      ...base.colors,
+      background: colors.bg,
+      card: colors.bg,
+      text: colors.text,
+      border: colors.border,
+      primary: colors.accent,
+    },
+  }
 
-export default function App() {
   return (
-    <SafeAreaProvider>
-      <NavigationContainer theme={theme}>
-      <StatusBar style="light" />
+    <NavigationContainer theme={navTheme}>
+      <StatusBar style={resolved === 'light' ? 'dark' : 'light'} />
       <Stack.Navigator
         screenOptions={{
           headerStyle: { backgroundColor: colors.bg },
           headerTintColor: colors.text,
-          headerTitleStyle: { fontWeight: '700' },
+          headerTitleStyle: { fontWeight: '600' },
           headerShadowVisible: false,
         }}
       >
@@ -54,7 +55,16 @@ export default function App() {
         <Stack.Screen name="Models" component={ModelsScreen} options={{ title: 'Model library' }} />
         <Stack.Screen name="Settings" component={SettingsScreen} options={{ title: 'Settings' }} />
       </Stack.Navigator>
-      </NavigationContainer>
+    </NavigationContainer>
+  )
+}
+
+export default function App() {
+  return (
+    <SafeAreaProvider>
+      <ThemeProvider>
+        <AppInner />
+      </ThemeProvider>
     </SafeAreaProvider>
   )
 }

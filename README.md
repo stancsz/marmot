@@ -34,9 +34,9 @@ actual memory so you know before downloading whether it will run comfortably.
 
 ## Screens
 
-| Home | Chat | Model library | Export |
-| :---: | :---: | :---: | :---: |
-| <img src="docs/assets/screen-chats.svg" width="200" alt="Conversation list" /> | <img src="docs/assets/screen-chat.svg" width="200" alt="Streaming chat" /> | <img src="docs/assets/screen-models.svg" width="200" alt="Model library with downloads" /> | <img src="docs/assets/screen-export.svg" width="200" alt="Export a chat to Drive, OneDrive, or Files" /> |
+| Home | Chat | Model library | Export | Settings (light) |
+| :---: | :---: | :---: | :---: | :---: |
+| <img src="docs/assets/screen-chats.svg" width="170" alt="Conversation list" /> | <img src="docs/assets/screen-chat.svg" width="170" alt="Streaming chat" /> | <img src="docs/assets/screen-models.svg" width="170" alt="Model library with downloads" /> | <img src="docs/assets/screen-export.svg" width="170" alt="Export a chat to Drive, OneDrive, or Files" /> | <img src="docs/assets/screen-settings.svg" width="170" alt="Settings in light mode with appearance toggle" /> |
 
 ## Features
 
@@ -53,6 +53,8 @@ actual memory so you know before downloading whether it will run comfortably.
   into the chat.
 - 🎛️ **Tunable sampling** — temperature, top-p, max tokens, context length
   (2k/4k/8k), and a custom system prompt.
+- 🌗 **Light & dark mode** — dark by default, with light and follow-system
+  options in Settings.
 - 📤 **Export & share** — share a chat as Markdown or back up everything as
   JSON through the native share sheet (Google Drive, OneDrive, Files, email —
   no cloud SDKs, no OAuth, Marmot never holds a credential).
