@@ -2,6 +2,10 @@
 /**
  * Pixel-accurate raster → SVG tracer for the Marmot logo.
  *
+ * One-off tooling — its deps are not in package.json (their wasm variants
+ * break npm's lockfile validation). Install before use:
+ *   npm i --no-save potrace pixelmatch pngjs @resvg/resvg-js
+ *
  * Usage: node scripts/trace-logo.mjs <input.png> [output.svg]
  *
  * Traces the bitmap with potrace, renders the SVG back to a PNG at the
