@@ -109,6 +109,9 @@ src/
     downloads.ts         # resumable downloads → .part file → atomic move
     chatStore.ts         # AsyncStorage persistence for chats + settings
     exportShare.ts       # Markdown/JSON export via the OS share sheet
+  agent/                 # pure-TS agent core (loop, tools, planner, memory,
+                         # skills, policies, reflection, judge) — unit-tested,
+                         # UI wiring in progress; see docs/AGENT.md
     deviceMemory.ts      # RAM-fit heuristic (total RAM vs model size)
     thinking.ts          # <think>…</think> splitter for reasoning models
   screens/

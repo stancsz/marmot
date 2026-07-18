@@ -1,0 +1,58 @@
+# Marmot Agent Architecture
+
+Marmot is growing from a chat app into an on-device agent. This document maps
+the frontier-agent layer model onto Marmot, records what is **real and
+tested** versus planned, and is the working state for the improvement loop:
+each iteration picks the next unchecked item, implements it, tests it,
+documents it, screenshots any UI change, and commits.
+
+Everything here must stay honest: a layer is only marked shipped when there is
+runnable evidence (tests or an on-device screenshot).
+
+## Layer map
+
+| Layer | Marmot implementation | Status | Evidence |
+| --- | --- | --- | --- |
+| System | `SYSTEM.md` execution kernel loaded by `CLAUDE.md`/`AGENTS.md`; in-app system prompt setting | ✅ shipped | repo root; Settings screen |
+| Skills | `src/agent/skills.ts` — trigger → procedure registry (math, recall, writing, debugging) injected into the loop prompt | ✅ core, tested | `jest`: selection tests |
+| Loops | `src/agent/loop.ts` — Observe→Decide→Act→Verify state machine with JSON action protocol, malformed-output recovery, honest truncation | ✅ core, tested | `jest`: 5 loop tests |
+| Tools | `src/agent/tools.ts` — local tools: `calculator` (safe parser), `datetime`, `search_chats`; policy allowlist enforced | ✅ core, tested | `jest`: tool + policy tests |
+| Memory | `src/agent/memory.ts` — user/project/episodic entries over a KV store, keyword retrieval, prompt injection | ✅ core, tested | `jest`: memory tests |
+| Planning | `src/agent/planner.ts` — plan → execute → update; JSON/numbered-list parsing, step tracking | ✅ core, tested | `jest`: planner tests |
+| Reflection | `src/agent/reflection.ts` `reflect()` — self-critique with optional revision, fail-open on garbage | ✅ core, tested | `jest`: reflection tests |
+| Judge | `src/agent/reflection.ts` `judge()` — independent accept/score verdict, fail-closed on garbage | ✅ core, tested | `jest`: judge tests |
+| Context | `search_chats` + memory retrieval (keyword). Semantic embeddings via llama.rn `embedding()` planned | 🔶 keyword only | `jest`: ranking tests |
+| Policies | `src/agent/types.ts` `AgentPolicies` — maxSteps, tool allowlist, observation caps | ✅ core, tested | `jest`: policy tests |
+| Subagents | Planner/executor/judge are separate prompts today; parallel worker orchestration planned | 🔶 partial | planner/judge are distinct calls |
+
+`✅ core, tested` = the logic is implemented as pure TypeScript with passing
+unit tests (`npm test`, 24 tests). **The UI wiring for Agent Mode is not
+shipped yet** — that is the next item.
+
+## Loop iteration protocol
+
+One intentional increment per iteration (per SYSTEM.md):
+
+1. Read this file; pick the first unchecked item below.
+2. Implement it for real — no stubs presented as features.
+3. Test it (`npm test` for core; on-device or mockup evidence for UI).
+4. Update this file and README; regenerate screenshots if UI changed.
+5. Commit and push.
+
+## Roadmap
+
+- [x] Agent core: loop, tools, policies, planner, skills, memory, reflection, judge (pure TS + 24 unit tests)
+- [ ] Wire Agent Mode into ChatScreen: toggle, engine adapter (`LlamaEngine → AgentLLM`), step timeline UI (plan/tool/observation chips), screenshot mockup
+- [ ] Memory UI: view/add/delete memories in Settings; auto-capture episodic summaries after chats
+- [ ] Plan panel: show the live plan with check-offs during agent runs
+- [ ] Reflection/judge toggle in Settings ("verify answers" — runs reflect + judge after each agent answer, shows verdict badge)
+- [ ] Semantic memory: llama.rn `embedding()` + cosine retrieval replacing keyword-only recall
+- [ ] Subagent orchestration: planner → per-step executor calls with fresh context; judge gate before final answer
+- [ ] On-device E2E: run the agent loop against a real downloaded model on hardware; record results here
+- [ ] Chat import (restores JSON exports)
+
+## Verification log
+
+| Date | Evidence |
+| --- | --- |
+| 2026-07-18 | `npm test`: 2 suites, 24/24 passed (loop, tools, policies, planner, skills, memory, reflection, judge, JSON extraction, calculator). `npx tsc --noEmit` clean. |
