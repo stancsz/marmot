@@ -176,7 +176,9 @@ export default function ChatScreen() {
 
     try {
       setPhase('loading-model')
-      await engine.ensureLoaded(working.modelId!, settings.contextLength)
+      await engine.ensureLoaded(working.modelId!, settings.contextLength, {
+        gpuAndroid: settings.gpuAndroid,
+      })
       setPhase('generating')
       setStreaming('')
 

@@ -16,10 +16,16 @@ type EngineStatus = 'unloaded' | 'loading' | 'ready' | 'generating'
  * context first. Load/complete are single-flight: concurrent callers get a
  * "busy" error instead of racing the native context.
  */
+export interface EngineLoadOptions {
+  /** experimental Android GPU offload (OpenCL); iOS always uses Metal */
+  gpuAndroid?: boolean
+}
+
 class LlamaEngine {
   private context: LlamaContext | null = null
   private loadedModelId: ModelId | null = null
   private loadedContextLength = 0
+  private loadedGpuAndroid = false
   private status: EngineStatus = 'unloaded'
 
   getStatus(): EngineStatus {
@@ -42,11 +48,17 @@ class LlamaEngine {
     await ctx.release().catch(() => {})
   }
 
-  async ensureLoaded(modelId: ModelId, contextLength: number): Promise<void> {
+  async ensureLoaded(
+    modelId: ModelId,
+    contextLength: number,
+    options: EngineLoadOptions = {}
+  ): Promise<void> {
+    const gpuAndroid = options.gpuAndroid ?? false
     if (
       this.context &&
       this.loadedModelId === modelId &&
-      this.loadedContextLength === contextLength
+      this.loadedContextLength === contextLength &&
+      this.loadedGpuAndroid === gpuAndroid
     ) {
       return
     }
@@ -60,13 +72,15 @@ class LlamaEngine {
         model: modelPath(modelId),
         n_ctx: contextLength,
         n_batch: 512,
-        // Metal on iOS; on Android llama.rn falls back to optimized CPU
-        n_gpu_layers: Platform.OS === 'ios' ? 99 : 0,
+        // Metal on iOS always; Android offloads only with the experimental
+        // opt-in (OpenCL on supported Adreno chips), else optimized CPU
+        n_gpu_layers: Platform.OS === 'ios' || gpuAndroid ? 99 : 0,
         use_mlock: false,
       })
       this.context = ctx
       this.loadedModelId = modelId
       this.loadedContextLength = contextLength
+      this.loadedGpuAndroid = gpuAndroid
       this.status = 'ready'
     } catch (e) {
       this.context = null

@@ -52,6 +52,8 @@ export interface InferenceSettings {
   systemPrompt: string
   /** run reflection + judge after each Agent Mode answer (2 extra passes) */
   verifyAnswers: boolean
+  /** experimental: offload layers to the GPU on Android (OpenCL, Adreno) */
+  gpuAndroid: boolean
 }
 
 export type DownloadStatus =

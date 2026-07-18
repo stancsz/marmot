@@ -31,24 +31,24 @@
     <circle cx="272" cy="214" r="15" fill="#F4F4F4" stroke="#E3E3E3"/>
     <text x="267" y="219" fill="#0D0D0D" font-size="14" font-weight="700">+</text>
 
-    <!-- max tokens -->
-    <text x="24" y="268" fill="#0D0D0D" font-size="14" font-weight="600">Max response tokens</text>
-    <text x="24" y="286" fill="#9A9A9A" font-size="11">Longest reply allowed</text>
-    <circle cx="204" cy="272" r="15" fill="#F4F4F4" stroke="#E3E3E3"/>
-    <text x="200" y="277" fill="#0D0D0D" font-size="14" font-weight="700">−</text>
-    <text x="238" y="277" fill="#0D0D0D" font-size="13" font-weight="700" text-anchor="middle">1024</text>
-    <circle cx="272" cy="272" r="15" fill="#F4F4F4" stroke="#E3E3E3"/>
-    <text x="267" y="277" fill="#0D0D0D" font-size="14" font-weight="700">+</text>
+    <!-- verify + gpu switches -->
+    <text x="24" y="264" fill="#0D0D0D" font-size="14" font-weight="600">Verify answers</text>
+    <text x="24" y="280" fill="#9A9A9A" font-size="11">Reflection + judge score each agent reply</text>
+    <rect x="252" y="256" width="44" height="24" rx="12" fill="#0D0D0D"/>
+    <circle cx="284" cy="268" r="9" fill="#FFFFFF"/>
+    <text x="24" y="306" fill="#0D0D0D" font-size="14" font-weight="600">GPU acceleration (Android)</text>
+    <text x="24" y="322" fill="#9A9A9A" font-size="11">Experimental · OpenCL on recent Snapdragons</text>
+    <rect x="252" y="298" width="44" height="24" rx="12" fill="#F4F4F4" stroke="#E3E3E3"/>
+    <circle cx="264" cy="310" r="9" fill="#FFFFFF" stroke="#E3E3E3"/>
 
     <!-- context length -->
-    <text x="24" y="326" fill="#0D0D0D" font-size="14" font-weight="600">Context length</text>
-    <text x="24" y="344" fill="#9A9A9A" font-size="11">Larger context remembers longer conversations.</text>
-    <rect x="24" y="354" width="86" height="32" rx="8" fill="#FFFFFF" stroke="#E3E3E3"/>
-    <text x="49" y="375" fill="#5D5D5D" font-size="12.5" font-weight="600">2048</text>
-    <rect x="117" y="354" width="86" height="32" rx="8" fill="#0D0D0D"/>
-    <text x="142" y="375" fill="#FFFFFF" font-size="12.5" font-weight="600">4096</text>
-    <rect x="210" y="354" width="86" height="32" rx="8" fill="#FFFFFF" stroke="#E3E3E3"/>
-    <text x="235" y="375" fill="#5D5D5D" font-size="12.5" font-weight="600">8192</text>
+    <text x="24" y="352" fill="#0D0D0D" font-size="14" font-weight="600">Context length</text>
+    <rect x="24" y="362" width="86" height="30" rx="8" fill="#FFFFFF" stroke="#E3E3E3"/>
+    <text x="49" y="382" fill="#5D5D5D" font-size="12.5" font-weight="600">2048</text>
+    <rect x="117" y="362" width="86" height="30" rx="8" fill="#0D0D0D"/>
+    <text x="142" y="382" fill="#FFFFFF" font-size="12.5" font-weight="600">4096</text>
+    <rect x="210" y="362" width="86" height="30" rx="8" fill="#FFFFFF" stroke="#E3E3E3"/>
+    <text x="235" y="382" fill="#5D5D5D" font-size="12.5" font-weight="600">8192</text>
 
     <!-- persona -->
     <text x="24" y="420" fill="#0D0D0D" font-size="14" font-weight="600">Persona</text>

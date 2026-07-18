@@ -184,7 +184,8 @@ depend on it.
 - [x] Import chats back from a JSON export
 - [x] Import any local `.gguf` from the Files app
 - [x] Background downloads
-- [ ] Android GPU (OpenCL/Vulkan) inference where supported
+- [x] Android GPU (OpenCL) inference — shipped as an experimental opt-in
+  toggle in Settings (off by default pending device benchmarks)
 - [x] Prompt templates / saved personas
 - [x] Basic RAG over local documents
 

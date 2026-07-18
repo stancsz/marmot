@@ -12,6 +12,7 @@ export const DEFAULT_SETTINGS: InferenceSettings = {
   systemPrompt:
     'You are a helpful assistant running locally on the user’s phone. Be concise.',
   verifyAnswers: false,
+  gpuAndroid: false,
 }
 
 export function newId(): string {

@@ -220,6 +220,23 @@ export default function SettingsScreen() {
         />
       </View>
 
+      <View style={styles.switchRow}>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.rowLabel}>GPU acceleration (Android)</Text>
+          <Text style={styles.rowHint}>
+            Experimental — offloads the model to the GPU (OpenCL, recent
+            Snapdragon chips). If replies fail or the app crashes, turn this
+            off. Applies on the next model load. iOS always uses Metal.
+          </Text>
+        </View>
+        <Switch
+          value={settings.gpuAndroid}
+          onValueChange={(v) => update({ gpuAndroid: v })}
+          trackColor={{ true: colors.accent, false: colors.surfaceAlt }}
+          thumbColor={colors.surface}
+        />
+      </View>
+
       <Text style={styles.rowLabel}>Agent memory</Text>
       <Text style={styles.rowHint}>
         What the agent remembers about you and your projects — view, add, or
