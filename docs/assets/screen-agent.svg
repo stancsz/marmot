@@ -22,26 +22,31 @@
     <line x1="8" y1="128" x2="312" y2="128" stroke="#2D333B"/>
     <!-- user bubble -->
     <rect x="72" y="146" width="224" height="64" rx="18" fill="#2F3B4C"/>
-    <text x="88" y="172" fill="#E6EDF3" font-size="13">What's an 18% tip on $84.50,</text>
-    <text x="88" y="192" fill="#E6EDF3" font-size="13">split three ways?</text>
+    <text x="88" y="172" fill="#E6EDF3" font-size="13">Work out an 18% tip on $84.50</text>
+    <text x="88" y="192" fill="#E6EDF3" font-size="13">and then split the total 3 ways</text>
+    <!-- plan panel -->
+    <rect x="24" y="226" width="272" height="80" rx="12" fill="#161B22" stroke="#2D333B"/>
+    <text x="40" y="248" fill="#8B949E" font-size="10" font-weight="700" letter-spacing="1">PLAN</text>
+    <text x="40" y="270" fill="#3FB950" font-size="13">☑</text>
+    <text x="62" y="270" fill="#6E7681" font-size="13" text-decoration="line-through">Compute the 18% tip</text>
+    <text x="40" y="292" fill="#3FB950" font-size="13">☑</text>
+    <text x="62" y="292" fill="#6E7681" font-size="13" text-decoration="line-through">Split the total three ways</text>
     <!-- agent step timeline -->
-    <text x="32" y="238" fill="#6E7681" font-size="12">💭</text>
-    <text x="56" y="238" fill="#8B949E" font-size="12">Need exact math — use the calculator.</text>
-    <text x="32" y="262" fill="#6E7681" font-size="12">🔧</text>
-    <text x="56" y="262" fill="#8B949E" font-size="12">calculator {"expression": "84.50*0.18"}</text>
-    <text x="34" y="286" fill="#6E7681" font-size="12">↳</text>
-    <text x="56" y="286" fill="#8B949E" font-size="12">15.21</text>
-    <text x="32" y="310" fill="#6E7681" font-size="12">🔧</text>
-    <text x="56" y="310" fill="#8B949E" font-size="12">calculator {"expression": "(84.50+15.21)/3"}</text>
-    <text x="34" y="334" fill="#6E7681" font-size="12">↳</text>
-    <text x="56" y="334" fill="#8B949E" font-size="12">33.236666666666665</text>
+    <text x="32" y="332" fill="#6E7681" font-size="12">🔧</text>
+    <text x="56" y="332" fill="#8B949E" font-size="12">calculator {"expression": "84.50*0.18"}</text>
+    <text x="34" y="356" fill="#6E7681" font-size="12">↳</text>
+    <text x="56" y="356" fill="#8B949E" font-size="12">15.21</text>
+    <text x="32" y="380" fill="#6E7681" font-size="12">🔧</text>
+    <text x="56" y="380" fill="#8B949E" font-size="12">calculator {"expression": "(84.50+15.21)/3"}</text>
+    <text x="34" y="404" fill="#6E7681" font-size="12">↳</text>
+    <text x="56" y="404" fill="#8B949E" font-size="12">33.236666666666665</text>
     <!-- assistant bubble -->
-    <rect x="24" y="352" width="256" height="126" rx="18" fill="#161B22" stroke="#2D333B"/>
-    <text x="40" y="380" fill="#E6EDF3" font-size="13">An 18% tip on $84.50 is $15.21,</text>
-    <text x="40" y="400" fill="#E6EDF3" font-size="13">bringing the total to $99.71.</text>
-    <text x="40" y="420" fill="#E6EDF3" font-size="13">Split three ways, that's $33.24</text>
-    <text x="40" y="440" fill="#E6EDF3" font-size="13">per person.</text>
-    <text x="40" y="464" fill="#6E7681" font-size="10">2 tool calls · verified with calculator</text>
+    <rect x="24" y="422" width="256" height="126" rx="18" fill="#161B22" stroke="#2D333B"/>
+    <text x="40" y="450" fill="#E6EDF3" font-size="13">An 18% tip on $84.50 is $15.21,</text>
+    <text x="40" y="470" fill="#E6EDF3" font-size="13">bringing the total to $99.71.</text>
+    <text x="40" y="490" fill="#E6EDF3" font-size="13">Split three ways, that's $33.24</text>
+    <text x="40" y="510" fill="#E6EDF3" font-size="13">per person.</text>
+    <text x="40" y="534" fill="#6E7681" font-size="10">2 tool calls · plan completed 2/2</text>
     <!-- input bar -->
     <line x1="8" y1="580" x2="312" y2="580" stroke="#2D333B"/>
     <rect x="24" y="594" width="196" height="44" rx="18" fill="#161B22" stroke="#2D333B"/>

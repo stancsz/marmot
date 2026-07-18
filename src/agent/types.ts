@@ -28,11 +28,11 @@ export interface AgentPolicies {
 }
 
 export type AgentAction =
-  | { action: 'tool'; tool: string; args: Record<string, unknown>; thought?: string }
-  | { action: 'final'; answer: string; thought?: string }
+  | { action: 'tool'; tool: string; args: Record<string, unknown>; thought?: string; doneStep?: number }
+  | { action: 'final'; answer: string; thought?: string; doneStep?: number }
 
 export interface AgentStep {
-  kind: 'thought' | 'tool_call' | 'observation' | 'final' | 'error'
+  kind: 'thought' | 'tool_call' | 'observation' | 'final' | 'error' | 'plan_check'
   content: string
   tool?: string
 }

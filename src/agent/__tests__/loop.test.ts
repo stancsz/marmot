@@ -101,6 +101,52 @@ describe('runAgentLoop', () => {
   })
 })
 
+describe('plan integration', () => {
+  const plan = {
+    steps: [
+      { id: 1, text: 'compute the tip', done: false },
+      { id: 2, text: 'split the total', done: false },
+    ],
+  }
+
+  it('injects the plan into the system prompt and emits plan_check on done_step', async () => {
+    const llm = mockLLM([
+      '{"action": "tool", "tool": "calculator", "args": {"expression": "84.50*0.18"}, "done_step": 1}',
+      '{"action": "final", "answer": "done", "done_step": 2}',
+    ])
+    const result = await runAgentLoop({
+      llm,
+      task: 'tip math',
+      tools: [calculatorTool()],
+      plan,
+    })
+    expect(llm.calls[0][0].content).toContain('Your plan:')
+    expect(llm.calls[0][0].content).toContain('1. compute the tip')
+    const checks = result.steps.filter((s) => s.kind === 'plan_check').map((s) => s.content)
+    expect(checks).toEqual(['1', '2'])
+  })
+
+  it('ignores done_step ids that are not in the plan', async () => {
+    const llm = mockLLM(['{"action": "final", "answer": "x", "done_step": 99}'])
+    const result = await runAgentLoop({ llm, task: 't', tools: [], plan })
+    expect(result.steps.some((s) => s.kind === 'plan_check')).toBe(false)
+  })
+})
+
+describe('shouldPlan', () => {
+  const { shouldPlan } = require('../planner') as typeof import('../planner')
+
+  it('plans for multi-sentence, sequenced, or long tasks', () => {
+    expect(shouldPlan('Find the population of Canada. Then compare it to Australia.')).toBe(true)
+    expect(shouldPlan('first check the weather and then suggest an outfit')).toBe(true)
+    expect(shouldPlan('x'.repeat(150))).toBe(true)
+  })
+  it('skips planning for simple one-shot questions', () => {
+    expect(shouldPlan('what is 2+2?')).toBe(false)
+    expect(shouldPlan('hello')).toBe(false)
+  })
+})
+
 describe('parseAction', () => {
   it('parses tool and final actions, tolerating fences', () => {
     expect(parseAction('```json\n{"action":"final","answer":"x"}\n```')).toEqual({
@@ -113,6 +159,10 @@ describe('parseAction', () => {
       tool: 't',
       args: { a: 1 },
     })
+  })
+  it('parses done_step in both snake and camel case', () => {
+    expect(parseAction('{"action":"final","answer":"x","done_step":2}')).toMatchObject({ doneStep: 2 })
+    expect(parseAction('{"action":"final","answer":"x","doneStep":"3"}')).toMatchObject({ doneStep: 3 })
   })
   it('returns null for wrong shapes', () => {
     expect(parseAction('{"action":"dance"}')).toBeNull()

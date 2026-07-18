@@ -28,7 +28,7 @@ import { engine } from '../lib/engine'
 import { downloads } from '../lib/downloads'
 import { shareChatAsMarkdown } from '../lib/exportShare'
 import { agentMemory, runAgentTask } from '../lib/agentRuntime'
-import { AgentCancelled, AgentStep, episodicSummary } from '../agent'
+import { AgentCancelled, AgentStep, Plan, episodicSummary, markDone } from '../agent'
 import { CATALOG, getModel } from '../models/catalog'
 import { splitThinking } from '../lib/thinking'
 import { Palette, radius, spacing, themedStyles } from '../theme'
@@ -57,6 +57,8 @@ export default function ChatScreen() {
   const [downloadedIds, setDownloadedIds] = useState<ModelId[]>([])
   const [agentMode, setAgentMode] = useState(false)
   const [agentSteps, setAgentSteps] = useState<AgentStep[]>([])
+  const [agentPlan, setAgentPlan] = useState<Plan | null>(null)
+  const planRef = useRef<Plan | null>(null)
   const cancelRef = useRef(false)
   const listRef = useRef<FlatList>(null)
   const chatRef = useRef<Chat | null>(null)
@@ -152,6 +154,8 @@ export default function ChatScreen() {
     setError(null)
     setInput('')
     setAgentSteps([])
+    planRef.current = null
+    setAgentPlan(null)
     cancelRef.current = false
     const userMsg = newMessage('user', text)
     let working: Chat = {
@@ -169,8 +173,25 @@ export default function ChatScreen() {
       setStreaming('')
 
       if (agentMode) {
-        const result = await runAgentTask(text, settings, () => cancelRef.current, (step) =>
-          setAgentSteps((prev) => [...prev, step])
+        const result = await runAgentTask(
+          text,
+          settings,
+          () => cancelRef.current,
+          (step) => {
+            if (step.kind === 'plan_check') {
+              const id = Number(step.content)
+              if (planRef.current) {
+                planRef.current = markDone(planRef.current, id)
+                setAgentPlan(planRef.current)
+              }
+              return
+            }
+            setAgentSteps((prev) => [...prev, step])
+          },
+          (plan) => {
+            planRef.current = plan
+            setAgentPlan(plan)
+          }
         )
         const toolCalls = result.steps.filter((s) => s.kind === 'tool_call').length
         const assistantMsg: ChatMessage = {
@@ -324,6 +345,19 @@ export default function ChatScreen() {
             {phase === 'loading-model' && (
               <StatusRow text={`Loading ${getModel(chat.modelId)?.name ?? 'model'}…`} spinner />
             )}
+            {agentPlan && (
+              <View style={styles.planPanel}>
+                <Text style={styles.planTitle}>Plan</Text>
+                {agentPlan.steps.map((s) => (
+                  <View key={s.id} style={styles.planRow}>
+                    <Text style={[styles.planBox, s.done && styles.planBoxDone]}>
+                      {s.done ? '☑' : '☐'}
+                    </Text>
+                    <Text style={[styles.planText, s.done && styles.planTextDone]}>{s.text}</Text>
+                  </View>
+                ))}
+              </View>
+            )}
             {agentSteps.length > 0 && (
               <View style={styles.stepTimeline}>
                 {agentSteps.map((s, i) => (
@@ -416,7 +450,7 @@ function StepRow({ step }: { step: AgentStep }) {
     step.kind === 'tool_call'
       ? `${step.tool} ${step.content}`
       : step.content
-  if (step.kind === 'final') return null // the final answer becomes the bubble
+  if (step.kind === 'final' || step.kind === 'plan_check') return null // shown elsewhere
   return (
     <View style={styles.stepRow}>
       <Text style={styles.stepIcon}>{icon}</Text>
@@ -470,6 +504,28 @@ const getStyles = themedStyles((colors: Palette) =>
   stepRow: { flexDirection: 'row', gap: spacing.sm, alignItems: 'flex-start' },
   stepIcon: { fontSize: 12, width: 18, textAlign: 'center' },
   stepText: { color: colors.textDim, fontSize: 12, flex: 1, lineHeight: 17 },
+  planPanel: {
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    padding: spacing.md,
+    gap: spacing.xs,
+    marginBottom: spacing.sm,
+  },
+  planTitle: {
+    color: colors.textDim,
+    fontSize: 11,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    marginBottom: 2,
+  },
+  planRow: { flexDirection: 'row', gap: spacing.sm, alignItems: 'flex-start' },
+  planBox: { color: colors.textFaint, fontSize: 13, width: 18 },
+  planBoxDone: { color: colors.green },
+  planText: { color: colors.text, fontSize: 13, flex: 1, lineHeight: 18 },
+  planTextDone: { color: colors.textFaint, textDecorationLine: 'line-through' },
   modelStrip: {
     flexDirection: 'row',
     gap: spacing.sm,

@@ -61,8 +61,9 @@ actual memory so you know before downloading whether it will run comfortably.
   options in Settings.
 - 🤖 **Agent Mode** — flip the ⚙ Agent chip and the model works step-by-step
   with local tools (calculator, clock, chat search), showing a live
-  thought/tool/observation timeline. Policy-bounded, fully on-device, unit-
-  tested core ([docs/AGENT.md](docs/AGENT.md)).
+  thought/tool/observation timeline. Multi-step tasks get an upfront plan
+  whose steps check off live as the model completes them. Policy-bounded,
+  fully on-device, unit-tested core ([docs/AGENT.md](docs/AGENT.md)).
 - 🧠 **Memory** — the agent remembers facts about you and your projects
   (viewable and editable in Settings → Memory) and auto-captures one-line
   summaries of past exchanges, injecting what's relevant into future runs.

@@ -44,3 +44,15 @@ export function parsePlan(text: string): Plan {
 export function markDone(plan: Plan, stepId: number): Plan {
   return { steps: plan.steps.map((s) => (s.id === stepId ? { ...s, done: true } : s)) }
 }
+
+/**
+ * Planning costs a full LLM round trip on a phone — only plan when the task
+ * is plausibly multi-step. Deliberately simple and pinned by tests.
+ */
+export function shouldPlan(task: string): boolean {
+  const t = task.trim()
+  if (t.length > 120) return true
+  const sentences = t.split(/[.!?]\s/).filter((s) => s.trim().length > 0)
+  if (sentences.length > 1) return true
+  return /\b(and then|then|and also|after that|first|finally)\b/i.test(t)
+}

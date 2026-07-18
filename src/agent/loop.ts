@@ -5,6 +5,7 @@ import {
   AgentResult,
   AgentStep,
   LLMMessage,
+  Plan,
   Skill,
   ToolDef,
 } from './types'
@@ -24,10 +25,26 @@ interface LoopOptions {
   policies?: AgentPolicies
   skills?: Skill[]
   memoryContext?: string
+  plan?: Plan
   onStep?: (step: AgentStep) => void
 }
 
-function systemPrompt(tools: ToolDef[], policies: AgentPolicies, skills: Skill[], memoryContext: string): string {
+function planPrompt(plan?: Plan): string {
+  if (!plan || plan.steps.length === 0) return ''
+  const lines = plan.steps.map((s) => `${s.id}. ${s.text}`).join('\n')
+  return (
+    `Your plan:\n${lines}\n` +
+    'When you have completed a plan step, include "done_step": <step number> in that turn’s JSON.'
+  )
+}
+
+function systemPrompt(
+  tools: ToolDef[],
+  policies: AgentPolicies,
+  skills: Skill[],
+  memoryContext: string,
+  plan?: Plan
+): string {
   const usable = tools.filter((t) => policies.allowedTools.includes(t.name))
   const toolLines = usable
     .map((t) => `- ${t.name}: ${t.description} args: ${JSON.stringify(t.args)}`)
@@ -40,6 +57,7 @@ function systemPrompt(tools: ToolDef[], policies: AgentPolicies, skills: Skill[]
     '  {"thought": "...", "action": "final", "answer": "..."}',
     usable.length > 0 ? `Tools available:\n${toolLines}` : 'No tools are available — answer directly.',
     `You have at most ${policies.maxSteps} turns; be economical.`,
+    planPrompt(plan),
     skillsPrompt(skills),
     memoryContext,
   ]
@@ -50,14 +68,20 @@ function systemPrompt(tools: ToolDef[], policies: AgentPolicies, skills: Skill[]
 export function parseAction(text: string): AgentAction | null {
   const json = extractFirstJson(text) as Record<string, unknown> | null
   if (!json) return null
+  const doneStep = num(json.done_step ?? json.doneStep)
   if (json.action === 'final' && typeof json.answer === 'string') {
-    return { action: 'final', answer: json.answer, thought: str(json.thought) }
+    return { action: 'final', answer: json.answer, thought: str(json.thought), doneStep }
   }
   if (json.action === 'tool' && typeof json.tool === 'string') {
     const args = (json.args && typeof json.args === 'object' ? json.args : {}) as Record<string, unknown>
-    return { action: 'tool', tool: json.tool, args, thought: str(json.thought) }
+    return { action: 'tool', tool: json.tool, args, thought: str(json.thought), doneStep }
   }
   return null
+}
+
+function num(v: unknown): number | undefined {
+  const n = typeof v === 'number' ? v : typeof v === 'string' ? Number(v) : NaN
+  return Number.isFinite(n) ? n : undefined
 }
 
 function str(v: unknown): string | undefined {
@@ -79,7 +103,10 @@ export async function runAgentLoop(opts: LoopOptions): Promise<AgentResult> {
   }
 
   const messages: LLMMessage[] = [
-    { role: 'system', content: systemPrompt(opts.tools, policies, skills, opts.memoryContext ?? '') },
+    {
+      role: 'system',
+      content: systemPrompt(opts.tools, policies, skills, opts.memoryContext ?? '', opts.plan),
+    },
     { role: 'user', content: opts.task },
   ]
 
@@ -104,6 +131,9 @@ export async function runAgentLoop(opts: LoopOptions): Promise<AgentResult> {
     }
 
     if (action.thought) emit({ kind: 'thought', content: action.thought })
+    if (action.doneStep !== undefined && opts.plan?.steps.some((s) => s.id === action.doneStep)) {
+      emit({ kind: 'plan_check', content: String(action.doneStep) })
+    }
 
     if (action.action === 'final') {
       emit({ kind: 'final', content: action.answer })

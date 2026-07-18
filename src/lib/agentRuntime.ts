@@ -7,12 +7,15 @@ import {
   AgentResult,
   AgentStep,
   MemoryStore,
+  Plan,
   calculatorTool,
   datetimeTool,
   makeCancellableLLM,
+  makePlan,
   runAgentLoop,
   searchChatsTool,
   selectSkills,
+  shouldPlan,
 } from '../agent'
 
 /**
@@ -41,17 +44,31 @@ export async function runAgentTask(
   task: string,
   settings: InferenceSettings,
   isCancelled: () => boolean,
-  onStep: (step: AgentStep) => void
+  onStep: (step: AgentStep) => void,
+  onPlan?: (plan: Plan) => void
 ): Promise<AgentResult> {
   const llm = makeCancellableLLM(engineLLM(settings), isCancelled)
   const tools = [calculatorTool(), datetimeTool(), searchChatsTool(loadChats)]
   const memoryContext = await agentMemory.contextFor(task)
+
+  // planning is separated from execution — but only for multi-step tasks;
+  // a plan with fewer than 2 steps carries no information
+  let plan: Plan | undefined
+  if (shouldPlan(task)) {
+    const candidate = await makePlan(llm, task)
+    if (candidate.steps.length >= 2) {
+      plan = candidate
+      onPlan?.(candidate)
+    }
+  }
+
   return runAgentLoop({
     llm,
     task,
     tools,
     skills: selectSkills(task),
     memoryContext,
+    plan,
     onStep,
   })
 }
