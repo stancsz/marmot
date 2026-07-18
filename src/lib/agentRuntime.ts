@@ -4,9 +4,9 @@ import { loadChats } from './chatStore'
 import { InferenceSettings } from '../types'
 import {
   AgentLLM,
-  AgentResult,
   AgentStep,
   MemoryStore,
+  OrchestratorResult,
   Plan,
   VerifiedAnswer,
   calculatorTool,
@@ -14,6 +14,7 @@ import {
   makeCancellableLLM,
   makePlan,
   runAgentLoop,
+  runOrchestratedTask,
   searchChatsTool,
   selectSkills,
   shouldPlan,
@@ -61,10 +62,11 @@ export async function runAgentTask(
   isCancelled: () => boolean,
   onStep: (step: AgentStep) => void,
   onPlan?: (plan: Plan) => void
-): Promise<AgentResult> {
+): Promise<OrchestratorResult> {
   const llm = makeCancellableLLM(engineLLM(settings), isCancelled)
   const tools = [calculatorTool(), datetimeTool(), searchChatsTool(loadChats)]
   const memoryContext = await agentMemory.contextFor(task)
+  const skills = selectSkills(task)
 
   // planning is separated from execution — but only for multi-step tasks;
   // a plan with fewer than 2 steps carries no information
@@ -77,15 +79,23 @@ export async function runAgentTask(
     }
   }
 
-  return runAgentLoop({
-    llm,
-    task,
-    tools,
-    skills: selectSkills(task),
-    memoryContext,
-    plan,
-    onStep,
-  })
+  // multi-step tasks run orchestrated: one fresh executor per plan step,
+  // then synthesis, with the judge gate tied to the verify-answers setting
+  if (plan) {
+    return runOrchestratedTask({
+      llm,
+      task,
+      tools,
+      skills,
+      memoryContext,
+      plan,
+      judgeGate: settings.verifyAnswers,
+      onStep,
+    })
+  }
+
+  const result = await runAgentLoop({ llm, task, tools, skills, memoryContext, onStep })
+  return { ...result, retried: false }
 }
 
 /** reflection + judge pass over a finished answer, on the loaded model */

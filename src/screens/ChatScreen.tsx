@@ -196,10 +196,19 @@ export default function ChatScreen() {
         )
         const toolCalls = result.steps.filter((s) => s.kind === 'tool_call').length
 
-        // optional verification pass: reflect (may revise) + judge (scores)
+        // orchestrated runs carry their own judge verdict; single-loop runs
+        // get the separate reflect+judge pass when verification is on
         let finalAnswer = result.answer
         let verifyStats: ChatMessage['stats'] = {}
-        if (settings.verifyAnswers && !result.truncated && !cancelRef.current) {
+        if (result.verdict) {
+          verifyStats = {
+            verify: {
+              accept: result.verdict.accept,
+              score: result.verdict.score,
+              revised: result.retried,
+            },
+          }
+        } else if (settings.verifyAnswers && !result.truncated && !cancelRef.current) {
           setVerifying(true)
           try {
             const verified = await verifyAgentAnswer(text, result.answer, settings, () => cancelRef.current)
@@ -473,7 +482,7 @@ function StepRow({ step }: { step: AgentStep }) {
   const { colors } = useTheme()
   const styles = getStyles(colors)
   const icon =
-    step.kind === 'thought' ? '💭' : step.kind === 'tool_call' ? '🔧' : step.kind === 'observation' ? '↳' : step.kind === 'error' ? '⚠' : '✓'
+    step.kind === 'thought' ? '💭' : step.kind === 'tool_call' ? '🔧' : step.kind === 'observation' ? '↳' : step.kind === 'error' ? '⚠' : step.kind === 'subtask' ? '▶' : '✓'
   const label =
     step.kind === 'tool_call'
       ? `${step.tool} ${step.content}`
@@ -483,7 +492,11 @@ function StepRow({ step }: { step: AgentStep }) {
     <View style={styles.stepRow}>
       <Text style={styles.stepIcon}>{icon}</Text>
       <Text
-        style={[styles.stepText, step.kind === 'error' && { color: colors.red }]}
+        style={[
+          styles.stepText,
+          step.kind === 'error' && { color: colors.red },
+          step.kind === 'subtask' && { color: colors.text, fontWeight: '600' },
+        ]}
         numberOfLines={2}
       >
         {label}

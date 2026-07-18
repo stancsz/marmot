@@ -61,9 +61,11 @@ actual memory so you know before downloading whether it will run comfortably.
   options in Settings.
 - 🤖 **Agent Mode** — flip the ⚙ Agent chip and the model works step-by-step
   with local tools (calculator, clock, chat search), showing a live
-  thought/tool/observation timeline. Multi-step tasks get an upfront plan
-  whose steps check off live as the model completes them. Policy-bounded,
-  fully on-device, unit-tested core ([docs/AGENT.md](docs/AGENT.md)).
+  thought/tool/observation timeline. Multi-step tasks are orchestrated:
+  a planner decomposes the task, each step runs in a fresh executor with
+  its own budget, steps check off live, and a synthesizer (plus optional
+  judge gate) produces the final answer. Policy-bounded, fully on-device,
+  unit-tested core ([docs/AGENT.md](docs/AGENT.md)).
 - ⚖️ **Verified answers (optional)** — a Settings toggle runs a
   reflection pass (which may revise the answer) plus an independent judge
   pass after each agent reply, stamping a ✓/⚠ score badge on the message.

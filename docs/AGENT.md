@@ -23,7 +23,7 @@ runnable evidence (tests or an on-device screenshot).
 | Judge | `src/agent/reflection.ts` `judge()` — independent accept/score verdict, fail-closed on garbage | ✅ core, tested | `jest`: judge tests |
 | Context | Semantic memory retrieval — llama.rn `embedding()` + cosine ranking with a noise threshold, lazy vector backfill, and keyword fallback when no model is loaded; `search_chats` stays keyword | ✅ core, tested | `jest`: semantic tests |
 | Policies | `src/agent/types.ts` `AgentPolicies` — maxSteps, tool allowlist, observation caps | ✅ core, tested | `jest`: policy tests |
-| Subagents | Planner/executor/judge are separate prompts today; parallel worker orchestration planned | 🔶 partial | planner/judge are distinct calls |
+| Subagents | `runOrchestratedTask` — one fresh-context executor per plan step (own budget, sees only completed-step summaries), synthesizer, judge gate with one bounded retry; deterministic plan check-offs | ✅ core, tested | `jest`: orchestrator tests |
 
 `✅ core, tested` = the logic is implemented as pure TypeScript with passing
 unit tests (`npm test`, 24 tests). **The UI wiring for Agent Mode is not
@@ -47,7 +47,7 @@ One intentional increment per iteration (per SYSTEM.md):
 - [x] Plan panel: `shouldPlan` gates a planner round-trip for multi-step tasks; the plan is injected into the loop prompt and the model reports completions via `done_step` in its JSON, driving live ☑ check-offs in the chat UI (protocol + gating tested)
 - [x] Reflection/judge toggle: "Verify answers" switch in Settings runs `verifyAnswer` (reflect may revise → judge scores the survivor) after each agent reply; verdict badge (✓/⚠ score, revised flag) persists on the message; best-effort — a failed pass never loses the answer
 - [x] Semantic memory: `Embedder` interface + cosine retrieval (threshold 0.25) in MemoryStore; `engine.embedText` adapter over llama.rn `embedding()`; lazy backfill (≤5/retrieve) for entries stored while no model was loaded; graceful keyword fallback — all tested with a deterministic fake embedder
-- [ ] Subagent orchestration: planner → per-step executor calls with fresh context; judge gate before final answer
+- [x] Subagent orchestration: planner → per-step fresh-context executors (`EXECUTOR_MAX_STEPS` budget each, summaries-only context) → synthesizer → judge gate (tied to Verify answers, one bounded retry with judge feedback); ▶ subtask headers in the timeline; wired as the default path for multi-step agent tasks
 - [ ] On-device E2E: run the agent loop against a real downloaded model on hardware; record results here
 - [ ] Chat import (restores JSON exports)
 
@@ -61,3 +61,4 @@ One intentional increment per iteration (per SYSTEM.md):
 | 2026-07-18 | Plan panel: `npm test` 34/34 (adds plan-prompt injection, plan_check emission, out-of-plan done_step rejection, done_step snake/camel parsing, shouldPlan gating). `tsc` + Android export clean. UI evidence: updated `docs/assets/screen-agent.svg` with the live plan panel. |
 | 2026-07-18 | Verify answers: `npm test` 38/38 (adds verifyAnswer tests: pass-through, revision-adopted-and-judged, judge rejection surfaced, empty revision ignored). `tsc` + Android export clean. UI evidence: verified badge in `docs/assets/screen-agent.svg`. |
 | 2026-07-18 | Semantic memory: `npm test` 44/44 (adds cosine edge cases, meaning-based retrieval with zero keyword overlap, noise-threshold filtering, persisted lazy backfill, keyword fallback when embedder down). `tsc` + Android export clean. Caveat: `engine.embedText` over llama.rn `embedding()` returns null-safe fallback; whether chat-tuned GGUFs produce useful embeddings on-device is unverified until the hardware E2E item. |
+| 2026-07-18 | Subagent orchestration: `npm test` 49/49 (adds per-step execution with summary-forwarding, judge-gate reject→retry with feedback, accept passthrough, executor-budget behavior, degenerate-plan fallback). `tsc` + Android export clean. UI evidence: `docs/assets/screen-agent.svg` reworked with ▶ subtask executor sections. |

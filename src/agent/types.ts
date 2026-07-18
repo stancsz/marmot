@@ -32,7 +32,7 @@ export type AgentAction =
   | { action: 'final'; answer: string; thought?: string; doneStep?: number }
 
 export interface AgentStep {
-  kind: 'thought' | 'tool_call' | 'observation' | 'final' | 'error' | 'plan_check'
+  kind: 'thought' | 'tool_call' | 'observation' | 'final' | 'error' | 'plan_check' | 'subtask'
   content: string
   tool?: string
 }
