@@ -1,7 +1,7 @@
-import React from 'react'
+import React, { useEffect } from 'react'
 import { StatusBar } from 'expo-status-bar'
 import { Pressable, Text } from 'react-native'
-import { DarkTheme, DefaultTheme, NavigationContainer } from '@react-navigation/native'
+import { DarkTheme, DefaultTheme, NavigationContainer, createNavigationContainerRef } from '@react-navigation/native'
 import { createNativeStackNavigator } from '@react-navigation/native-stack'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 import ChatListScreen from './src/screens/ChatListScreen'
@@ -10,13 +10,33 @@ import MemoryScreen from './src/screens/MemoryScreen'
 import ModelsScreen from './src/screens/ModelsScreen'
 import SettingsScreen from './src/screens/SettingsScreen'
 import VoiceScreen from './src/screens/VoiceScreen'
+import IngestScreen from './src/screens/IngestScreen'
+import { useShareIntent } from 'expo-share-intent'
 import { ThemeProvider, useTheme } from './src/ThemeContext'
 import type { RootStackParamList } from './src/navigation'
 
 const Stack = createNativeStackNavigator<RootStackParamList>()
+const navRef = createNavigationContainerRef<RootStackParamList>()
+
+// marmot://ask?text=... — iOS Shortcuts / Android automation entry point
+const linking = {
+  prefixes: ['marmot://'],
+  config: { screens: { Ingest: 'ask' } },
+}
 
 function AppInner() {
   const { colors, resolved } = useTheme()
+  const { hasShareIntent, shareIntent, resetShareIntent } = useShareIntent()
+
+  // text shared from another app lands on the quick-actions screen
+  useEffect(() => {
+    if (!hasShareIntent) return
+    const text = shareIntent?.text ?? shareIntent?.webUrl ?? ''
+    if (text && navRef.isReady()) {
+      navRef.navigate('Ingest', { text })
+      resetShareIntent()
+    }
+  }, [hasShareIntent, shareIntent, resetShareIntent])
   const base = resolved === 'light' ? DefaultTheme : DarkTheme
   const navTheme = {
     ...base,
@@ -31,7 +51,7 @@ function AppInner() {
   }
 
   return (
-    <NavigationContainer theme={navTheme}>
+    <NavigationContainer ref={navRef} theme={navTheme} linking={linking}>
       <StatusBar style={resolved === 'light' ? 'dark' : 'light'} />
       <Stack.Navigator
         screenOptions={{
@@ -58,6 +78,7 @@ function AppInner() {
         <Stack.Screen name="Settings" component={SettingsScreen} options={{ title: 'Settings' }} />
         <Stack.Screen name="Memory" component={MemoryScreen} options={{ title: 'Memory' }} />
         <Stack.Screen name="Voice" component={VoiceScreen} options={{ title: 'Voice' }} />
+        <Stack.Screen name="Ingest" component={IngestScreen} options={{ title: 'Quick actions' }} />
       </Stack.Navigator>
     </NavigationContainer>
   )

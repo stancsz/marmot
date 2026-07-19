@@ -32,6 +32,7 @@ import { AgentCancelled, AgentStep, Plan, episodicSummary, markDone } from '../a
 import { CATALOG } from '../models/catalog'
 import { customModelsCache, loadCustomModels, resolveModel } from '../lib/customModels'
 import { splitThinking } from '../lib/thinking'
+import { buildResearchTask } from '../lib/textActions'
 import MarkdownText from '../components/MarkdownText'
 import { Palette, radius, spacing, themedStyles } from '../theme'
 import { useTheme } from '../ThemeContext'
@@ -59,6 +60,7 @@ export default function ChatScreen() {
   const [downloadedIds, setDownloadedIds] = useState<ModelId[]>([])
   const [customModels, setCustomModels] = useState<ModelSpec[]>([])
   const [agentMode, setAgentMode] = useState(false)
+  const [deepResearch, setDeepResearch] = useState(false)
   const [agentSteps, setAgentSteps] = useState<AgentStep[]>([])
   const [agentPlan, setAgentPlan] = useState<Plan | null>(null)
   const [verifying, setVerifying] = useState(false)
@@ -184,7 +186,7 @@ export default function ChatScreen() {
 
       if (agentMode) {
         const result = await runAgentTask(
-          text,
+          deepResearch && settings.allowWeb ? buildResearchTask(text) : text,
           settings,
           () => cancelRef.current,
           (step) => {
@@ -339,6 +341,18 @@ export default function ChatScreen() {
             ⚙ Agent
           </Text>
         </Pressable>
+        {agentMode && settings.allowWeb && (
+          <Pressable
+            disabled={phase !== 'idle'}
+            hitSlop={6}
+            style={[styles.agentChip, deepResearch && styles.researchChipActive]}
+            onPress={() => setDeepResearch((v) => !v)}
+          >
+            <Text style={[styles.agentChipText, deepResearch && styles.agentChipTextActive]}>
+              🔬 Research
+            </Text>
+          </Pressable>
+        )}
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -556,6 +570,7 @@ const getStyles = themedStyles((colors: Palette) =>
     borderColor: colors.border,
   },
   agentChipActive: { backgroundColor: colors.green, borderColor: colors.green },
+  researchChipActive: { backgroundColor: colors.accent, borderColor: colors.accent },
   agentChipText: { color: colors.textDim, fontSize: 13, fontWeight: '600' },
   agentChipTextActive: { color: colors.bg },
   stepTimeline: {

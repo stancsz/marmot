@@ -5,4 +5,5 @@ export type RootStackParamList = {
   Settings: undefined
   Memory: undefined
   Voice: undefined
+  Ingest: { text?: string } | undefined
 }

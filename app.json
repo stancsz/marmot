@@ -2,6 +2,7 @@
   "expo": {
     "name": "Marmot",
     "slug": "marmot",
+    "scheme": "marmot",
     "version": "0.1.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -30,6 +31,15 @@
     },
     "plugins": [
       "expo-sharing",
+      [
+        "expo-share-intent",
+        {
+          "iosActivationRules": {
+            "NSExtensionActivationSupportsText": true,
+            "NSExtensionActivationSupportsWebURLWithMaxCount": 1
+          }
+        }
+      ],
       [
         "expo-speech-recognition",
         {

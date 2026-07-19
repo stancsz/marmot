@@ -110,6 +110,12 @@ export default function ChatListScreen() {
       <View style={[styles.fabRow, { bottom: spacing.xl + insets.bottom }]}>
         <Pressable
           style={[styles.fab, styles.fabSecondary]}
+          onPress={() => navigation.navigate('Ingest')}
+        >
+          <Text style={styles.fabSecondaryText}>⚡</Text>
+        </Pressable>
+        <Pressable
+          style={[styles.fab, styles.fabSecondary]}
           onPress={() => navigation.navigate('Models')}
         >
           <Text style={styles.fabSecondaryText}>Models</Text>

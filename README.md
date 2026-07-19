@@ -39,13 +39,17 @@ actual memory so you know before downloading whether it will run comfortably.
 
 ## Screens
 
-| Home | Chat | Agent mode | Voice mode |
-| :---: | :---: | :---: | :---: |
-| <img src="docs/assets/screen-chats.svg" width="190" alt="Conversation list" /> | <img src="docs/assets/screen-chat.svg" width="190" alt="Streaming chat" /> | <img src="docs/assets/screen-agent.svg" width="190" alt="Agent mode with tool-call timeline" /> | <img src="docs/assets/screen-voice.svg" width="190" alt="Live voice conversation mode" /> |
+| Home | Chat | Agent mode |
+| :---: | :---: | :---: |
+| <img src="docs/assets/screen-chats.svg" width="230" alt="Conversation list" /> | <img src="docs/assets/screen-chat.svg" width="230" alt="Streaming chat" /> | <img src="docs/assets/screen-agent.svg" width="230" alt="Agent mode with tool-call timeline" /> |
 
-| Model library | Memory & RAG | Export | Settings (light) |
-| :---: | :---: | :---: | :---: |
-| <img src="docs/assets/screen-models.svg" width="190" alt="Model library with downloads" /> | <img src="docs/assets/screen-memory.svg" width="190" alt="Agent memory: view, add, delete" /> | <img src="docs/assets/screen-export.svg" width="190" alt="Export a chat to Drive, OneDrive, or Files" /> | <img src="docs/assets/screen-settings.svg" width="190" alt="Settings in light mode with appearance toggle" /> |
+| Voice mode | Quick actions | Memory & RAG |
+| :---: | :---: | :---: |
+| <img src="docs/assets/screen-voice.svg" width="230" alt="Live voice conversation mode" /> | <img src="docs/assets/screen-ingest.svg" width="230" alt="Share text to Marmot: summarize, translate, proofread" /> | <img src="docs/assets/screen-memory.svg" width="230" alt="Agent memory: view, add, delete" /> |
+
+| Model library | Export | Settings (light) |
+| :---: | :---: | :---: |
+| <img src="docs/assets/screen-models.svg" width="230" alt="Model library with downloads" /> | <img src="docs/assets/screen-export.svg" width="230" alt="Export a chat to Drive, OneDrive, or Files" /> | <img src="docs/assets/screen-settings.svg" width="230" alt="Settings in light mode with appearance toggle" /> |
 
 ## Features
 
@@ -81,6 +85,16 @@ actual memory so you know before downloading whether it will run comfortably.
 - 🔌 **MCP client** — connect Model Context Protocol servers over HTTP
   (home server, Home Assistant, work tools); their tools appear in Agent
   Mode, namespaced per server, gated by the same policy layer.
+
+**Everyday**
+
+- ⚡ **Share-to-Marmot** — share text or a page from any app (or paste) and
+  hit one-tap actions: summarize, key points, proofread, translate, change
+  tone, draft a reply, explain, or save into searchable documents.
+- 🔬 **Deep research** — with web access on, a Research toggle steers the
+  agent into multi-angle searches, source fetches, and a cited report.
+- 🔗 **Automation hooks** — `marmot://ask?text=…` deep link for iOS
+  Shortcuts and Android automation.
 
 **Voice**
 

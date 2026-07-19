@@ -113,13 +113,13 @@ What people actually rate assistants highly for, mapped to mechanisms:
 
 | # | Feature | Mechanism | Effort |
 | --- | --- | --- | --- |
-| P1 | **Share-to-Marmot** — share any article/text from another app → summarize / save to RAG | Android `SEND` intent filters (config plugin) + iOS share extension (native target); routes into a new chat or Documents | M |
-| P2 | **Quick text actions** — proofread, translate, tone-shift, TL;DR as one-tap chips on shared or pasted text | Prompt presets over the existing engine; chips UI on the share-ingest screen | S |
+| ✅ P1 | **Share-to-Marmot** — share any article/text from another app → summarize / save to RAG | Android `SEND` intent filters (config plugin) + iOS share extension (native target); routes into a new chat or Documents | M |
+| ✅ P2 | **Quick text actions** — proofread, translate, tone-shift, TL;DR as one-tap chips on shared or pasted text | Prompt presets over the existing engine; chips UI on the share-ingest screen | S |
 | P3 | **Vision** — photograph a whiteboard/receipt/document and ask about it | Gemma 4 E4B/E2B are multimodal; download the mmproj file alongside the GGUF, llama.rn multimodal completion; camera via expo-image-picker | M |
 | P4 | **Calendar & reminders tools** — "add lunch with Sam Friday" fully on-device | expo-calendar as agent tools (`create_event`, `list_events`) behind a permission-gated policy switch | S |
 | P5 | **Daily briefing / scheduled tasks** — a morning card from memory + docs (+ web if enabled) | expo-notifications + expo-background-task; orchestrator run persisted to a briefing chat | M |
-| P6 | **Deep research mode** — multi-source cited reports, ChatGPT/Gemini-style | Preset over the existing orchestrator + web tools: fan out N queries → fetch → synthesize with citations + progress UI | S |
-| P7 | **Shortcuts / automation hooks** — trigger Marmot from iOS Shortcuts & Android intents | `marmot://ask?text=…` deep link route (Expo linking) + x-callback response | S |
+| ✅ P6 | **Deep research mode** — multi-source cited reports, ChatGPT/Gemini-style | Preset over the existing orchestrator + web tools: fan out N queries → fetch → synthesize with citations + progress UI | S |
+| ✅ P7 | **Shortcuts / automation hooks** — trigger Marmot from iOS Shortcuts & Android intents | `marmot://ask?text=…` deep link route (Expo linking) + x-callback response | S |
 | P8 | **Projects** — group chats with pinned documents + a per-project persona (Claude Projects) | Chat gains `projectId`; project = persona + document subset filter over existing RAG | M |
 | P9 | **Artifacts-lite** — render generated HTML/SVG/tables in a preview card | WebView (react-native-webview) sandboxed render of fenced html blocks | M |
 | P10 | **Live interpreter** — two-way spoken translation | Voice stack + per-turn language toggle; Qwen models are strong multilingual | M |
