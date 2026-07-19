@@ -21,6 +21,7 @@ import { agentDocuments, agentMemory } from '../lib/agentRuntime'
 import { loadSettings } from '../lib/chatStore'
 import { episodicSummary, LLMMessage } from '../agent'
 import { VoicePhase, VoiceSession, detectAddress } from '../lib/voiceSession'
+import { visibleAnswer } from '../lib/thinking'
 import { InferenceSettings } from '../types'
 import { Palette, radius, spacing, themedStyles } from '../theme'
 import { useTheme } from '../ThemeContext'
@@ -156,10 +157,13 @@ export default function VoiceScreen() {
     const result = await engine.complete(
       messages,
       { ...settings, maxTokens: Math.min(200, settings.maxTokens) },
-      () => {}
+      () => {},
+      { enableThinking: false } // spoken replies must come fast and direct
     )
-    historyRef.current.push({ role: 'assistant', content: result.text })
-    return result.text
+    // never speak think-blocks aloud
+    const spoken = visibleAnswer(result.text)
+    historyRef.current.push({ role: 'assistant', content: spoken })
+    return spoken
   }, [])
 
   const startRecognition = useCallback(() => {

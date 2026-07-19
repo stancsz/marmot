@@ -52,10 +52,22 @@ export function splitThinking(text: string): {
 }
 
 /**
+ * The answer with reasoning stripped, for one-shot consumers (voice replies,
+ * quick actions, agent turns) that must never surface think-blocks. Falls
+ * back to the raw text when the model spent its whole budget thinking —
+ * better than returning nothing.
+ */
+export function visibleAnswer(text: string): string {
+  return splitThinking(text).answer || text.trim()
+}
+
+/**
  * Heuristic for implicit reasoning streams (no tags emitted yet): Qwen3.5
  * reasoning openers. Conservative — only matches known prefixes so normal
  * answers are never hidden.
  */
 function looksLikeOpenReasoning(text: string): boolean {
-  return /^(Thinking Process:|Okay, |Let's think|We need to answer|The user asks)/.test(text.trimStart())
+  // tolerate markdown decoration around the opener (**Thinking Process:**,
+  // ### Thinking — the model varies its header, seen live in emulator E2E)
+  return /^[#*_\s]*(Thinking|Okay, |Let's think|We need to|The user)/.test(text.trimStart())
 }

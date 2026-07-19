@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react'
+import React, { useCallback, useEffect, useState } from 'react'
 import {
   ActivityIndicator,
   Alert,
@@ -17,6 +17,7 @@ import { downloads } from '../lib/downloads'
 import { agentDocuments } from '../lib/agentRuntime'
 import { loadSettings } from '../lib/chatStore'
 import { TEXT_ACTIONS, TextAction } from '../lib/textActions'
+import { splitThinking, visibleAnswer } from '../lib/thinking'
 import MarkdownText from '../components/MarkdownText'
 import { Palette, radius, spacing, themedStyles } from '../theme'
 import { useTheme } from '../ThemeContext'
@@ -31,10 +32,17 @@ export default function IngestScreen() {
   const { colors } = useTheme()
   const styles = getStyles(colors)
   const [text, setText] = useState(route.params?.text ?? '')
+
+  // a share/deep-link can arrive while this screen is already open — adopt
+  // the new text instead of silently keeping the old one (found in E2E)
+  useEffect(() => {
+    if (route.params?.text) setText(route.params.text)
+  }, [route.params?.text])
   const [activeAction, setActiveAction] = useState<TextAction | null>(null)
   const [pendingOptions, setPendingOptions] = useState<TextAction | null>(null)
   const [result, setResult] = useState('')
   const [busy, setBusy] = useState(false)
+  const [thinkingLive, setThinkingLive] = useState(false)
 
   const run = useCallback(
     async (action: TextAction, option?: string) => {
@@ -55,16 +63,26 @@ export default function IngestScreen() {
         await engine.ensureLoaded(modelId, settings.contextLength, {
           gpuAndroid: settings.gpuAndroid,
         })
+        // stream the answer as it generates; reasoning models think first,
+        // so surface a "Thinking…" state instead of a silent spinner
+        let acc = ''
         const completion = await engine.complete(
           [{ role: 'user', content: action.buildPrompt(input, option) }],
           settings,
-          () => {}
+          (token) => {
+            acc += token
+            const parts = splitThinking(acc)
+            setThinkingLive(parts.isThinking)
+            if (parts.answer) setResult(parts.answer)
+          },
+          { enableThinking: false } // quick actions are transforms, not puzzles
         )
-        setResult(completion.text.trim())
+        setResult(visibleAnswer(completion.text))
       } catch (e: any) {
         Alert.alert('Action failed', e?.message ?? 'Generation failed')
       } finally {
         setBusy(false)
+        setThinkingLive(false)
       }
     },
     [text]
@@ -135,11 +153,13 @@ export default function IngestScreen() {
       {busy && (
         <View style={styles.busyRow}>
           <ActivityIndicator color={colors.accent} />
-          <Text style={styles.busyText}>{activeAction?.label}…</Text>
+          <Text style={styles.busyText}>
+            {thinkingLive ? 'Thinking…' : `${activeAction?.label}…`}
+          </Text>
         </View>
       )}
 
-      {result !== '' && !busy && (
+      {result !== '' && (
         <View style={styles.resultCard}>
           <MarkdownText text={result} />
           <View style={styles.resultActions}>

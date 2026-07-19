@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage'
 import { engine } from './engine'
 import { loadMcpAgentTools } from './mcpServers'
 import { loadChats } from './chatStore'
+import { visibleAnswer } from './thinking'
 import { InferenceSettings } from '../types'
 import {
   AgentLLM,
@@ -40,9 +41,13 @@ function engineLLM(settings: InferenceSettings): AgentLLM {
         messages,
         // agent turns need format discipline more than creativity
         { ...settings, temperature: Math.min(settings.temperature, 0.7) },
-        () => {}
+        () => {},
+        // agent turns must emit the JSON action promptly, not reason at length
+        { enableThinking: false }
       )
-      return result.text
+      // strip reasoning so stray braces in think-blocks can't confuse the
+      // JSON action parser
+      return visibleAnswer(result.text)
     },
   }
 }

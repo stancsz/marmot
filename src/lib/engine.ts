@@ -98,7 +98,8 @@ class LlamaEngine {
   async complete(
     messages: Pick<ChatMessage, 'role' | 'content'>[],
     settings: InferenceSettings,
-    onToken: (token: string) => void
+    onToken: (token: string) => void,
+    options: { enableThinking?: boolean } = {}
   ): Promise<CompletionResult> {
     const ctx = this.context
     if (!ctx) throw new Error('No model loaded')
@@ -111,6 +112,12 @@ class LlamaEngine {
           n_predict: settings.maxTokens,
           temperature: settings.temperature,
           top_p: settings.topP,
+          // reasoning templates (Qwen3.5) open a <think> block in the prompt
+          // itself; one-shot consumers pass false to get direct answers
+          // instead of minutes of think-tokens (found in emulator E2E)
+          ...(options.enableThinking === undefined
+            ? {}
+            : { enable_thinking: options.enableThinking }),
         },
         (data) => {
           if (data.token) onToken(data.token)
