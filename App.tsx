@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react'
+import React, { useEffect, useState } from 'react'
 import { StatusBar } from 'expo-status-bar'
 import { Pressable, Text } from 'react-native'
 import { DarkTheme, DefaultTheme, NavigationContainer, createNavigationContainerRef } from '@react-navigation/native'
@@ -11,6 +11,7 @@ import ModelsScreen from './src/screens/ModelsScreen'
 import SettingsScreen from './src/screens/SettingsScreen'
 import VoiceScreen from './src/screens/VoiceScreen'
 import IngestScreen from './src/screens/IngestScreen'
+import WelcomeOverlay from './src/components/WelcomeOverlay'
 import { useShareIntent } from 'expo-share-intent'
 import { ThemeProvider, useTheme } from './src/ThemeContext'
 import type { RootStackParamList } from './src/navigation'
@@ -85,10 +86,12 @@ function AppInner() {
 }
 
 export default function App() {
+  const [welcomed, setWelcomed] = useState(false)
   return (
     <SafeAreaProvider>
       <ThemeProvider>
         <AppInner />
+        {!welcomed && <WelcomeOverlay onDone={() => setWelcomed(true)} />}
       </ThemeProvider>
     </SafeAreaProvider>
   )

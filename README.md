@@ -47,14 +47,21 @@ actual memory so you know before downloading whether it will run comfortably.
 | :---: | :---: | :---: |
 | <img src="docs/assets/screen-voice.svg" width="230" alt="Live voice conversation mode" /> | <img src="docs/assets/screen-ingest.svg" width="230" alt="Share text to Marmot: summarize, translate, proofread" /> | <img src="docs/assets/screen-memory.svg" width="230" alt="Agent memory: view, add, delete" /> |
 
-| Model library | Export | Settings |
+| Every launch | Model library | Export |
 | :---: | :---: | :---: |
-| <img src="docs/assets/screen-models.svg" width="230" alt="Model library with downloads" /> | <img src="docs/assets/screen-export.svg" width="230" alt="Export a chat to Drive, OneDrive, or Files" /> | <img src="docs/assets/screen-settings.svg" width="230" alt="Settings with appearance, verification, and GPU toggles" /> |
+| <img src="docs/assets/screen-welcome.svg" width="230" alt="Welcome screen: the marmot greets you with a random one-liner" /> | <img src="docs/assets/screen-models.svg" width="230" alt="Model library with downloads" /> | <img src="docs/assets/screen-export.svg" width="230" alt="Export a chat to Drive, OneDrive, or Files" /> |
+
+| Settings |
+| :---: |
+| <img src="docs/assets/screen-settings.svg" width="230" alt="Settings with appearance, verification, and GPU toggles" /> |
 
 ## Features
 
 **Chat**
 
+- 🐹 **A proper hello** — every launch, the marmot pops up with a random
+  one-liner (“Zero servers were consulted in the making of this app.”)
+  before getting out of your way. Tap to skip.
 - ⚡ **Streaming replies** with tok/s stats, rendered as markdown (bold,
   lists, code blocks, tappable links) in assistant bubbles.
 - 🤔 **Reasoning-model aware** — `<think>…</think>` blocks fold into a
