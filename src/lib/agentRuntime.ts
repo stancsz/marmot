@@ -1,10 +1,12 @@
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { engine } from './engine'
+import { loadMcpAgentTools } from './mcpServers'
 import { loadChats } from './chatStore'
 import { InferenceSettings } from '../types'
 import {
   AgentLLM,
   AgentStep,
+  DEFAULT_POLICIES,
   DocumentStore,
   MemoryStore,
   OrchestratorResult,
@@ -75,6 +77,7 @@ export async function runAgentTask(
   onPlan?: (plan: Plan) => void
 ): Promise<OrchestratorResult> {
   const llm = makeCancellableLLM(engineLLM(settings), isCancelled)
+  const mcpTools = await loadMcpAgentTools()
   const tools = [
     calculatorTool(),
     datetimeTool(),
@@ -83,7 +86,15 @@ export async function runAgentTask(
     // web tools exist only when the user has opted in — otherwise the
     // agent (and the app) is provably offline after model download
     ...(settings.allowWeb ? [webSearchTool(httpFetcher), fetchPageTool(httpFetcher)] : []),
+    // MCP tools come from servers the user added explicitly in Settings
+    ...mcpTools,
   ]
+  // MCP tool names are dynamic — extend the policy allowlist with exactly
+  // the tools that connected servers actually expose
+  const policies = {
+    ...DEFAULT_POLICIES,
+    allowedTools: [...DEFAULT_POLICIES.allowedTools, ...mcpTools.map((t) => t.name)],
+  }
   const memoryContext = await agentMemory.contextFor(task)
   const skills = selectSkills(task)
 
@@ -105,6 +116,7 @@ export async function runAgentTask(
       llm,
       task,
       tools,
+      policies,
       skills,
       memoryContext,
       plan,
@@ -114,7 +126,7 @@ export async function runAgentTask(
     })
   }
 
-  const result = await runAgentLoop({ llm, task, tools, skills, memoryContext, persona: settings.systemPrompt, onStep })
+  const result = await runAgentLoop({ llm, task, tools, policies, skills, memoryContext, persona: settings.systemPrompt, onStep })
   return { ...result, retried: false }
 }
 

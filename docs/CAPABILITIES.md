@@ -95,6 +95,39 @@ security-scoped directory bookmarks).
 execution with an **undo journal**. The agent never moves a file without an
 approved plan.
 
+## 8. MCP — the universal tool interface
+
+Marmot is an **MCP client over Streamable HTTP** (phones can't spawn stdio
+servers, but they can speak JSON-RPC to HTTP servers on the LAN or the
+internet). Users add servers in Settings; each server's tools are fetched
+(`initialize` → `tools/list`), namespaced `mcp_<server>_<tool>`, registered
+into the agent, and the policy allowlist extends to exactly what connected
+servers expose. Per-server failures are skipped, tool lists cached ~5 min.
+v1 handles JSON and complete-SSE response bodies; live streaming
+subscriptions, resources, and prompts are follow-ups. This one protocol is
+the bridge to Home Assistant, company tools, personal servers — anything.
+
+## Everyday-productivity roadmap (v3)
+
+What people actually rate assistants highly for, mapped to mechanisms:
+
+| # | Feature | Mechanism | Effort |
+| --- | --- | --- | --- |
+| P1 | **Share-to-Marmot** — share any article/text from another app → summarize / save to RAG | Android `SEND` intent filters (config plugin) + iOS share extension (native target); routes into a new chat or Documents | M |
+| P2 | **Quick text actions** — proofread, translate, tone-shift, TL;DR as one-tap chips on shared or pasted text | Prompt presets over the existing engine; chips UI on the share-ingest screen | S |
+| P3 | **Vision** — photograph a whiteboard/receipt/document and ask about it | Gemma 4 E4B/E2B are multimodal; download the mmproj file alongside the GGUF, llama.rn multimodal completion; camera via expo-image-picker | M |
+| P4 | **Calendar & reminders tools** — "add lunch with Sam Friday" fully on-device | expo-calendar as agent tools (`create_event`, `list_events`) behind a permission-gated policy switch | S |
+| P5 | **Daily briefing / scheduled tasks** — a morning card from memory + docs (+ web if enabled) | expo-notifications + expo-background-task; orchestrator run persisted to a briefing chat | M |
+| P6 | **Deep research mode** — multi-source cited reports, ChatGPT/Gemini-style | Preset over the existing orchestrator + web tools: fan out N queries → fetch → synthesize with citations + progress UI | S |
+| P7 | **Shortcuts / automation hooks** — trigger Marmot from iOS Shortcuts & Android intents | `marmot://ask?text=…` deep link route (Expo linking) + x-callback response | S |
+| P8 | **Projects** — group chats with pinned documents + a per-project persona (Claude Projects) | Chat gains `projectId`; project = persona + document subset filter over existing RAG | M |
+| P9 | **Artifacts-lite** — render generated HTML/SVG/tables in a preview card | WebView (react-native-webview) sandboxed render of fenced html blocks | M |
+| P10 | **Live interpreter** — two-way spoken translation | Voice stack + per-turn language toggle; Qwen models are strong multilingual | M |
+
+Ordering rationale: P1/P2 capture the highest-frequency daily loop (text in
+other apps → assistant), P3 unlocks the camera (the phone's superpower), and
+P4–P7 turn Marmot from a destination app into ambient infrastructure.
+
 ## Build order
 
 1. ✅ Web research (no native deps)
@@ -102,9 +135,11 @@ approved plan.
 3. ✅ Live conversation v1 (`VoiceSession` machine + Voice screen)
 4. ✅ Meeting mode v1 (continuous transcript → RAG, wake-phrase suggest cards)
 5. ✅ Repo import v1 (tarball → RAG)
-6. ⬜ whisper.rn ASR upgrade + background audio (build-affecting)
-7. ⬜ File organization (Android SAF, plan/approve/undo)
-8. ⬜ isomorphic-git v2; neural TTS; diarization
+6. ✅ MCP client (Streamable HTTP, Settings-managed servers)
+7. ⬜ whisper.rn ASR upgrade + background audio (build-affecting)
+8. ⬜ File organization (Android SAF, plan/approve/undo)
+9. ⬜ isomorphic-git v2; neural TTS; diarization
+10. ⬜ Everyday-productivity roadmap P1–P10 above
 
 Items 1–4 ship now; 5–8 are the standing roadmap with their mechanisms fixed
 above so each is an implementation task, not a research task.

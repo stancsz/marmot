@@ -18,6 +18,13 @@ import { DEFAULT_SETTINGS, loadChats, loadSettings, saveAllChats, saveSettings }
 import { mergeChats, parseChatExport } from '../lib/importParse'
 import { Persona } from '../lib/personaCore'
 import { loadPersonas, removeCustomPersona, saveCustomPersona } from '../lib/personas'
+import {
+  McpServerEntry,
+  addMcpServer,
+  loadMcpServers,
+  removeMcpServer,
+  setMcpServerEnabled,
+} from '../lib/mcpServers'
 import type { RootStackParamList } from '../navigation'
 import { shareAllChatsAsJson } from '../lib/exportShare'
 import { Palette, radius, spacing, themedStyles } from '../theme'
@@ -32,12 +39,16 @@ export default function SettingsScreen() {
   const [settings, setSettings] = useState<InferenceSettings | null>(null)
   const [personas, setPersonas] = useState<Persona[]>([])
   const [personaName, setPersonaName] = useState('')
+  const [mcpServers, setMcpServers] = useState<McpServerEntry[]>([])
+  const [mcpName, setMcpName] = useState('')
+  const [mcpUrl, setMcpUrl] = useState('')
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const pending = useRef<InferenceSettings | null>(null)
 
   useEffect(() => {
     loadSettings().then(setSettings)
     loadPersonas().then(setPersonas)
+    loadMcpServers().then(setMcpServers)
     return () => {
       // flush any debounced change on unmount so nothing is lost
       if (saveTimer.current) clearTimeout(saveTimer.current)
@@ -234,6 +245,67 @@ export default function SettingsScreen() {
           trackColor={{ true: colors.accent, false: colors.surfaceAlt }}
           thumbColor={colors.surface}
         />
+      </View>
+
+      <Text style={styles.rowLabel}>MCP servers</Text>
+      <Text style={styles.rowHint}>
+        Connect the agent to Model Context Protocol servers over HTTP (your
+        home server, work tools, Home Assistant…). Their tools appear in
+        Agent Mode, namespaced per server. Traffic goes only to servers you
+        add here.
+      </Text>
+      {mcpServers.map((server) => (
+        <View key={server.id} style={styles.mcpRow}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.mcpName}>{server.name}</Text>
+            <Text style={styles.mcpUrl} numberOfLines={1}>
+              {server.url}
+            </Text>
+          </View>
+          <Switch
+            value={server.enabled}
+            onValueChange={(v) => setMcpServerEnabled(server.id, v).then(setMcpServers)}
+            trackColor={{ true: colors.accent, false: colors.surfaceAlt }}
+            thumbColor={colors.surface}
+          />
+          <Pressable hitSlop={10} onPress={() => removeMcpServer(server.id).then(setMcpServers)}>
+            <Text style={styles.mcpDelete}>✕</Text>
+          </Pressable>
+        </View>
+      ))}
+      <View style={styles.mcpAddRow}>
+        <TextInput
+          style={[styles.saveAsInput, { flex: 0.7 }]}
+          value={mcpName}
+          onChangeText={setMcpName}
+          placeholder="Name"
+          placeholderTextColor={colors.textFaint}
+          autoCapitalize="none"
+        />
+        <TextInput
+          style={styles.saveAsInput}
+          value={mcpUrl}
+          onChangeText={setMcpUrl}
+          placeholder="https://server/mcp"
+          placeholderTextColor={colors.textFaint}
+          autoCapitalize="none"
+          autoCorrect={false}
+        />
+        <Pressable
+          style={[styles.saveAsBtn, (!mcpName.trim() || !mcpUrl.trim()) && { opacity: 0.4 }]}
+          disabled={!mcpName.trim() || !mcpUrl.trim()}
+          onPress={async () => {
+            try {
+              setMcpServers(await addMcpServer(mcpName, mcpUrl))
+              setMcpName('')
+              setMcpUrl('')
+            } catch (e: any) {
+              Alert.alert('Could not add server', e?.message ?? '')
+            }
+          }}
+        >
+          <Text style={styles.saveAsBtnText}>Add</Text>
+        </Pressable>
       </View>
 
       <View style={styles.switchRow}>
@@ -454,6 +526,21 @@ const getStyles = themedStyles((colors: Palette) =>
     justifyContent: 'center',
   },
   saveAsBtnText: { color: colors.text, fontSize: 13, fontWeight: '600' },
+  mcpRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.sm,
+    padding: spacing.md,
+    marginBottom: spacing.sm,
+  },
+  mcpName: { color: colors.text, fontSize: 14, fontWeight: '600' },
+  mcpUrl: { color: colors.textFaint, fontSize: 11.5, marginTop: 1 },
+  mcpDelete: { color: colors.red, fontSize: 15, fontWeight: '700' },
+  mcpAddRow: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.xl },
   systemInput: {
     backgroundColor: colors.surface,
     borderWidth: 1,

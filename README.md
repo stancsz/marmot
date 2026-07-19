@@ -78,6 +78,9 @@ actual memory so you know before downloading whether it will run comfortably.
   on-device.
 - 🌐 **Web research (opt-in)** — `web_search` + `fetch_page` tools with cited
   sources; with the switch off, Marmot is provably offline.
+- 🔌 **MCP client** — connect Model Context Protocol servers over HTTP
+  (home server, Home Assistant, work tools); their tools appear in Agent
+  Mode, namespaced per server, gated by the same policy layer.
 
 **Voice**
 
