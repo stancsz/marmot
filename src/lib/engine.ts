@@ -44,7 +44,7 @@ class LlamaEngine {
     this.loadedModelId = null
     // never release a context mid-generation — stop first so the native
     // side settles before the memory is freed
-    if (wasGenerating) await ctx.stopCompletion().catch(() => {})
+    if (wasGenerating) await Promise.resolve(ctx.stopCompletion()).catch(() => {})
     await ctx.release().catch(() => {})
   }
 
@@ -132,7 +132,7 @@ class LlamaEngine {
 
   async stop(): Promise<void> {
     if (this.context) {
-      await this.context.stopCompletion().catch(() => {})
+      await Promise.resolve(this.context.stopCompletion()).catch(() => {})
     }
   }
 

@@ -32,6 +32,7 @@ import { AgentCancelled, AgentStep, Plan, episodicSummary, markDone } from '../a
 import { CATALOG } from '../models/catalog'
 import { customModelsCache, loadCustomModels, resolveModel } from '../lib/customModels'
 import { splitThinking } from '../lib/thinking'
+import { useKeyboardHeight } from '../lib/useKeyboardHeight'
 import { buildResearchTask } from '../lib/textActions'
 import MarkdownText from '../components/MarkdownText'
 import { Palette, radius, spacing, themedStyles } from '../theme'
@@ -48,6 +49,7 @@ export default function ChatScreen() {
   const route = useRoute<Route>()
   const headerHeight = useHeaderHeight()
   const insets = useSafeAreaInsets()
+  const keyboardHeight = useKeyboardHeight()
   const { colors } = useTheme()
   const styles = getStyles(colors)
   const [booted, setBooted] = useState(false)
@@ -438,7 +440,7 @@ export default function ChatScreen() {
         }
       />
 
-      <View style={[styles.inputRow, { paddingBottom: spacing.md + insets.bottom }]}>
+      <View style={[styles.inputRow, { paddingBottom: spacing.md + (keyboardHeight > 0 ? keyboardHeight : insets.bottom) }]}>
         <Pressable
           style={styles.micBtn}
           hitSlop={8}

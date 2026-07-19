@@ -55,6 +55,17 @@ actual memory so you know before downloading whether it will run comfortably.
 | :---: |
 | <img src="docs/assets/screen-settings.svg" width="230" alt="Settings with appearance, verification, and GPU toggles" /> |
 
+### Real screenshots — captured from a live emulator run
+
+The mockups above show the design; these are actual captures from the app
+running on an Android 15 emulator (Pixel 7 profile) with **Qwen3.5 0.8B
+generating on-device** — 8.6 tok/s on emulated x86 CPU (real ARM phones with
+NEON are considerably faster).
+
+| First launch | Model library | Real inference | Reasoning folded |
+| :---: | :---: | :---: | :---: |
+| <img src="docs/assets/real/welcome.png" width="190" alt="Real welcome screen capture" /> | <img src="docs/assets/real/models.png" width="190" alt="Real model library with downloaded model" /> | <img src="docs/assets/real/inference.png" width="190" alt="Real on-device generation with tok/s stats" /> | <img src="docs/assets/real/thinking.png" width="190" alt="Thinking indicator during reasoning" /> |
+
 ## Features
 
 **Chat**

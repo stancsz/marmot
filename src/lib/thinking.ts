@@ -14,6 +14,22 @@ export function splitThinking(text: string): {
   let rest = text
   let isThinking = false
 
+  // Some chat templates (Qwen3.5) put the opening <think> inside the prompt,
+  // so the stream contains only a closing tag: everything before </think>
+  // is reasoning. (Found in emulator E2E.)
+  if (!rest.includes('<think>') && rest.includes('</think>')) {
+    const close = rest.indexOf('</think>')
+    return {
+      thinking: rest.slice(0, close).trim(),
+      answer: rest.slice(close + 8).trim(),
+      isThinking: false,
+    }
+  }
+  if (!rest.includes('<think>') && looksLikeOpenReasoning(rest)) {
+    // stream still inside an implicit think block — no closing tag yet
+    return { thinking: rest.trim(), answer: '', isThinking: true }
+  }
+
   for (;;) {
     const open = rest.indexOf('<think>')
     if (open === -1) {
@@ -33,4 +49,13 @@ export function splitThinking(text: string): {
   }
 
   return { thinking, answer: answer.trim(), isThinking }
+}
+
+/**
+ * Heuristic for implicit reasoning streams (no tags emitted yet): Qwen3.5
+ * reasoning openers. Conservative — only matches known prefixes so normal
+ * answers are never hidden.
+ */
+function looksLikeOpenReasoning(text: string): boolean {
+  return /^(Thinking Process:|Okay, |Let's think|We need to answer|The user asks)/.test(text.trimStart())
 }
