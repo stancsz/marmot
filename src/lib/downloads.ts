@@ -1,3 +1,4 @@
+import { AppState } from 'react-native'
 import { File, Directory, Paths, DownloadTask, type DownloadPauseState, type DownloadProgress, type DownloadTaskOptions } from 'expo-file-system'
 import * as LegacyFileSystem from 'expo-file-system/legacy'
 import AsyncStorage from '@react-native-async-storage/async-storage'
@@ -91,6 +92,31 @@ class DownloadManager {
     this.listeners.add(fn)
     fn(this.getStates())
     return () => this.listeners.delete(fn)
+  }
+
+  /**
+   * Pause active downloads when the app is backgrounded and resume paused
+   * ones when it returns to the foreground. iOS background URLSession sessions
+   * may keep transferring, but the JS DownloadTask is not restored if the
+   * process is killed — pausing on background and resuming on foreground
+   * keeps the in-flight task and its resume data under our control so the
+   * user never sees a stuck progress bar after unlocking the phone.
+   */
+  attachAppStateHandler(): () => void {
+    const sub = AppState.addEventListener('change', (next) => {
+      if (next === 'background' || next === 'inactive') {
+        for (const id of Object.keys(this.tasks) as ModelId[]) {
+          this.pause(id).catch(() => {})
+        }
+      } else if (next === 'active') {
+        for (const id of Object.keys(this.states) as ModelId[]) {
+          if (this.states[id]?.status === 'paused' && !this.tasks[id]) {
+            this.start(id).catch(() => {})
+          }
+        }
+      }
+    })
+    return () => sub.remove()
   }
 
   getStates(): Record<ModelId, DownloadState> {

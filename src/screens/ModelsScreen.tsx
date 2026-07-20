@@ -67,10 +67,12 @@ export default function ModelsScreen() {
         downloads.freeDiskBytes().then((b) => !cancelled && setFreeBytes(b)).catch(() => {})
       }
     })
+    const detachDownloads = downloads.attachAppStateHandler()
     return () => {
       cancelled = true
       unsub?.()
       appState.remove()
+      detachDownloads()
     }
   }, [])
 

@@ -113,9 +113,9 @@ const getStyles = themedStyles((colors: Palette) =>
     h1: { fontSize: 19, fontWeight: '700' },
     h2: { fontSize: 17, fontWeight: '700' },
     h3: { fontSize: 15.5, fontWeight: '700' },
-    listRow: { flexDirection: 'row', gap: spacing.sm },
+    listRow: { flexDirection: 'row', gap: spacing.sm, alignItems: 'flex-start' },
     marker: { color: colors.textDim, minWidth: 18 },
-    listText: { flex: 1 },
+    listText: { flexShrink: 1 },
     codeBlock: {
       backgroundColor: colors.surfaceAlt,
       borderRadius: radius.sm,
