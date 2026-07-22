@@ -41,6 +41,9 @@ Start with the flagship path: share a screenshot or message, let the local
 model propose a calendar action, review the resolved time, and approve or undo
 the phone-side write. The Android proof run is recorded in
 [the flagship verification log](docs/verification/flagship-share-vertical-2026-07-22.md).
+See the [sanitized before/after examples](docs/EXAMPLES.md) for verified
+calendar, offline travel, safe screenshot rejection, and the current draft
+reply quality gate.
 
 ## What is Marmot?
 

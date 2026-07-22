@@ -109,7 +109,17 @@ export const TEXT_ACTIONS: TextAction[] = [
     icon: 'reply',
     group: 'Write',
     buildPrompt: (text) =>
-      wrap('Draft a brief, polite reply to the following message. Offer one clarifying question if something is ambiguous.', text),
+      wrap(
+        [
+          'You are drafting a reply on behalf of the user.',
+          'Reply to the specific request in the message below in 1-3 short sentences.',
+          'Be polite, concrete, and reference the actual ask, including people, times, and dates when present.',
+          'Ask at most one short clarifying question, and only if the message is genuinely ambiguous; never ask the user to describe their own problem.',
+          'Do not refuse. Do not say "I can help" or "happy to help". Do not add a generic greeting.',
+          'Return only the reply text: no preamble, labels, separators, or markdown.',
+        ].join(' '),
+        text
+      ),
   },
   {
     id: 'explain',

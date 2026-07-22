@@ -92,3 +92,27 @@ not a product latency promise. The next gate is a better OCR-capable local
 vision path or a larger phone-fit vision model, followed by repeating the real
 Photos share → preview → approval → undo run. The current implementation
 keeps the safe manual-edit path instead of guessing.
+
+### Private message to draft reply: guarded pass; model quality open
+
+A sanitized external message share reached Quick actions with the original
+message intact:
+
+> Could we move our 10 AM team sync to 2 PM tomorrow? I have a conflict.
+
+The local 0.8B model produced a long repetitive answer on the first rerun and
+was rejected by the draft validator. Marmot then showed a grounded, editable
+local fallback — `Thanks for letting me know. I will check whether 2 PM
+tomorrow works for the team and get back to you.` — with an explicit warning
+to review it before approval. Approval changed the card to `Approved locally`;
+it did not send a message. This proves the safety boundary and fallback
+behavior, not high-quality generative drafting yet.
+
+Evidence:
+
+- [sanitized message before action](private-message-before-draft-fixed-2026-07-22.png)
+- [guarded draft preview](private-message-draft-guarded-2026-07-22.png)
+- [approved locally, still not sent](private-message-draft-approved-2026-07-22.png)
+
+The next draft-quality gate is a small-device pass rate across several
+messages, with no generic helper templates, repetition, or unsupported facts.

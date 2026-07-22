@@ -184,7 +184,7 @@ export default function IngestScreen() {
         if (action.runLocally) {
           const content = action.runLocally(input)
           setResult(content)
-          setActionCard(actionCardFor(action.id, content, option))
+          setActionCard(actionCardFor(action.id, content, option, { sourceText: input }))
           return
         }
         const settings = await loadSettings()
@@ -214,7 +214,7 @@ export default function IngestScreen() {
         if (requestRef.current !== requestId) return
         const content = visibleAnswer(completion.text)
         setResult(content)
-        setActionCard(actionCardFor(action.id, content, option))
+        setActionCard(actionCardFor(action.id, content, option, { sourceText: input }))
       } catch (e: any) {
         if (requestRef.current === requestId) Alert.alert('Action failed', e?.message ?? 'Generation failed')
       } finally {
@@ -670,6 +670,7 @@ function ActionCardView({
           <Text style={styles.resultMeta}>{statusText}</Text>
         </View>
       </View>
+      {card.qualityWarning ? <Text style={styles.resultWarning}>{card.qualityWarning}</Text> : null}
       {card.phoneAction ? (
         <View style={styles.phoneActionDetails}>
           <Text style={styles.phoneActionTitle}>{card.phoneAction.title}</Text>
@@ -822,6 +823,7 @@ const getStyles = themedStyles((colors: Palette) =>
     resultHeading: { flex: 1, gap: 2 },
     resultTitle: { color: colors.text, fontSize: 16, fontWeight: '700' },
     resultMeta: { color: colors.textDim, fontSize: 12 },
+    resultWarning: { color: colors.yellow, fontSize: 13, lineHeight: 19, marginBottom: spacing.md },
     phoneActionDetails: {
       backgroundColor: colors.surfaceAlt,
       borderRadius: radius.md,

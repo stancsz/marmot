@@ -43,6 +43,15 @@ describe('quick text actions', () => {
     expect(tone.buildPrompt('hey', 'persuasive')).toContain('persuasive tone')
   })
 
+  it('hardens the draft-reply prompt for small local models', () => {
+    const reply = getTextAction('reply')!
+    const prompt = reply.buildPrompt('Could we move our 10 AM team sync to 2 PM tomorrow? I have a conflict.')
+    expect(prompt).toContain('1-3 short sentences')
+    expect(prompt).toMatch(/do not say "i can help"/i)
+    expect(prompt).toContain('10 AM team sync')
+    expect(prompt).toMatch(/no preamble, labels, separators, or markdown/i)
+  })
+
   it('redacts common identifiers locally without changing unrelated text', () => {
     const input = 'Email jane@example.com or call 403-555-0199. Visit https://example.com and use 4111 1111 1111 1111. SSN 123-45-6789.'
     const redacted = redactPii(input)
