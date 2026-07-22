@@ -16,6 +16,8 @@ import { useShareIntent } from 'expo-share-intent'
 import { ThemeProvider, useTheme } from './src/ThemeContext'
 import IconButton from './src/components/IconButton'
 import type { RootStackParamList } from './src/navigation'
+import { sharedFileToAttachment } from './src/lib/sharedMedia'
+import type { Attachment } from './src/types'
 
 const Stack = createNativeStackNavigator<RootStackParamList>()
 const navRef = createNavigationContainerRef<RootStackParamList>()
@@ -29,16 +31,35 @@ const linking = {
 function AppInner() {
   const { colors, resolved } = useTheme()
   const { hasShareIntent, shareIntent, resetShareIntent } = useShareIntent()
+  const [navigationReady, setNavigationReady] = useState(false)
 
-  // text shared from another app lands on the quick-actions screen
+  // Text and screenshots shared from another app land on the quick-actions
+  // screen. Shared files are copied into Marmot storage before navigation so
+  // the local model never depends on a provider-owned URI.
   useEffect(() => {
-    if (!hasShareIntent) return
+    if (!hasShareIntent || !navigationReady) return
     const text = shareIntent?.text ?? shareIntent?.webUrl ?? ''
-    if (text && navRef.isReady()) {
-      navRef.navigate('Ingest', { text })
+    const image = shareIntent?.files?.find((file) => file.mimeType?.toLowerCase().startsWith('image/'))
+    let attachment: Attachment | undefined
+    if (image) {
+      try {
+        attachment = sharedFileToAttachment(image)
+      } catch (error) {
+        console.warn('Marmot could not import the shared image', error)
+      }
+    }
+    if (!text && !attachment) {
+      resetShareIntent()
+      return
+    }
+    if (navRef.isReady()) {
+      navRef.navigate('Ingest', {
+        ...(text ? { text } : {}),
+        ...(attachment ? { attachment } : {}),
+      })
       resetShareIntent()
     }
-  }, [hasShareIntent, shareIntent, resetShareIntent])
+  }, [hasShareIntent, navigationReady, shareIntent, resetShareIntent])
   const base = resolved === 'light' ? DefaultTheme : DarkTheme
   const navTheme = {
     ...base,
@@ -53,7 +74,12 @@ function AppInner() {
   }
 
   return (
-    <NavigationContainer ref={navRef} theme={navTheme} linking={linking}>
+    <NavigationContainer
+      ref={navRef}
+      theme={navTheme}
+      linking={linking}
+      onReady={() => setNavigationReady(true)}
+    >
       <StatusBar style={resolved === 'light' ? 'dark' : 'light'} />
       <Stack.Navigator
         screenOptions={{

@@ -28,7 +28,7 @@ function parsedStart(input: string, now: number): Date {
 }
 
 function eventTitle(input: string): string {
-  const normalized = input.replace(/\s+/g, ' ').trim()
+  const normalized = input.split('|', 1)[0].replace(/\s+/g, ' ').trim()
   return (
     normalized
       .replace(EXPLICIT_TIME, '')
@@ -39,6 +39,10 @@ function eventTitle(input: string): string {
 }
 
 export interface CalendarEventDraft extends CalendarActionPayload {}
+
+export function hasExplicitCalendarTime(input: string): boolean {
+  return EXPLICIT_TIME.test(input)
+}
 
 export function calendarEventDraft(input: string, now = Date.now()): CalendarEventDraft {
   const title = eventTitle(input)

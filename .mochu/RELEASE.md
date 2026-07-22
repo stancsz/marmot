@@ -18,3 +18,4 @@
 - [ ] R9 The companion has user-controlled private milestones and optional notifications; no hidden always-on processing (offline-companion)
 - [x] R10 One canonical repository, synchronized public homepage, and stable latest-release download URL (distribution-identity)
 - [ ] R11 Production-signed Android AAB/APK and iOS TestFlight/App Store builds are published and installed from the stores (store-distribution)
+- [ ] R12 An external screenshot or message becomes a local typed calendar action with explicit approval and undo (flagship-share-vertical)

@@ -1,3 +1,5 @@
+import type { Attachment } from './types'
+
 export type RootStackParamList = {
   Chats: undefined
   Chat: { chatId?: string; demo?: boolean }
@@ -5,6 +7,6 @@ export type RootStackParamList = {
   Settings: undefined
   Memory: undefined
   Voice: undefined
-  Ingest: { text?: string } | undefined
+  Ingest: { text?: string; attachment?: Attachment } | undefined
   Flight: undefined
 }

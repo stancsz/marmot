@@ -1,4 +1,4 @@
-import { calendarEventCard, calendarEventDraft } from '../phoneActions'
+import { calendarEventCard, calendarEventDraft, hasExplicitCalendarTime } from '../phoneActions'
 
 describe('phone action previews', () => {
   it('creates a deterministic one-hour calendar preview', () => {
@@ -6,6 +6,11 @@ describe('phone action previews', () => {
     expect(draft.title).toBe('Team sync')
     expect(draft.endDate.getTime() - draft.startDate.getTime()).toBe(60 * 60 * 1000)
     expect(draft.endDate.getTime()).toBeGreaterThan(draft.startDate.getTime())
+  })
+
+  it('recognizes only explicit relative times for screenshot extraction', () => {
+    expect(hasExplicitCalendarTime('Team sync tomorrow at 10 AM | Bring the agenda')).toBe(true)
+    expect(hasExplicitCalendarTime('Team sync sometime next week')).toBe(false)
   })
 
   it('wraps the draft in an approval-required action card', () => {

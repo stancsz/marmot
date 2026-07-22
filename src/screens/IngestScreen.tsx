@@ -22,14 +22,18 @@ import { loadSettings } from '../lib/chatStore'
 import { TEXT_ACTION_GROUPS, TEXT_ACTIONS, TextAction } from '../lib/textActions'
 import { appendVoiceTranscript } from '../lib/voiceInput'
 import { ActionCard, actionCardFor, saveActionCard } from '../lib/actionCards'
-import { calendarEventCard } from '../lib/phoneActions'
+import { calendarEventCard, hasExplicitCalendarTime } from '../lib/phoneActions'
+import { buildCompletionMessages } from '../lib/attachmentContext'
+import { getModel } from '../models/catalog'
 import { splitThinking, visibleAnswer } from '../lib/thinking'
 import MarkdownText from '../components/MarkdownText'
+import AttachmentChip from '../components/AttachmentChip'
 import Icon, { IconName } from '../components/Icon'
 import IconButton from '../components/IconButton'
 import { Palette, radius, spacing, themedStyles } from '../theme'
 import { useTheme } from '../ThemeContext'
 import type { RootStackParamList } from '../navigation'
+import type { Attachment } from '../types'
 
 type Nav = NativeStackNavigationProp<RootStackParamList>
 type Route = RouteProp<RootStackParamList, 'Ingest'>
@@ -54,6 +58,7 @@ export default function IngestScreen() {
   const { colors } = useTheme()
   const styles = getStyles(colors)
   const [text, setText] = useState(route.params?.text ?? '')
+  const [attachment, setAttachment] = useState<Attachment | null>(route.params?.attachment ?? null)
   const [listening, setListening] = useState(false)
   const [voicePreview, setVoicePreview] = useState('')
   const listeningRef = useRef(false)
@@ -62,7 +67,9 @@ export default function IngestScreen() {
   // the new text instead of silently keeping the old one (found in E2E)
   useEffect(() => {
     if (route.params?.text) setText(route.params.text)
-  }, [route.params?.text])
+    if (route.params?.attachment) setAttachment(route.params.attachment)
+    else if (route.params && 'attachment' in route.params) setAttachment(null)
+  }, [route.params?.text, route.params?.attachment])
   useEffect(() => () => {
     if (listeningRef.current) ExpoSpeechRecognitionModule.stop()
   }, [])
@@ -71,6 +78,7 @@ export default function IngestScreen() {
   const [result, setResult] = useState('')
   const [actionCard, setActionCard] = useState<ActionCard | null>(null)
   const [busy, setBusy] = useState(false)
+  const [busyLabel, setBusyLabel] = useState('')
   const [thinkingLive, setThinkingLive] = useState(false)
 
   useSpeechRecognitionEvent('result', (event) => {
@@ -137,6 +145,7 @@ export default function IngestScreen() {
       setResult('')
       setActionCard(null)
       setBusy(true)
+      setBusyLabel(action.label)
       try {
         if (action.runLocally) {
           const content = action.runLocally(input)
@@ -175,11 +184,75 @@ export default function IngestScreen() {
         Alert.alert('Action failed', e?.message ?? 'Generation failed')
       } finally {
         setBusy(false)
+        setBusyLabel('')
         setThinkingLive(false)
       }
     },
     [text]
   )
+
+  const extractCalendarEvent = useCallback(async () => {
+    if (!attachment || !attachment.mimeType.startsWith('image/') || busy) return
+    setActiveAction(null)
+    setPendingOptions(null)
+    setResult('')
+    setActionCard(null)
+    setBusy(true)
+    setBusyLabel('Extracting calendar event')
+    try {
+      const settings = await loadSettings()
+      await downloads.init()
+      const modelId = downloads
+        .downloadedModelIds()
+        .find((id) => getModel(id)?.projector?.modalities.includes('vision'))
+      if (!modelId) {
+        Alert.alert('Vision model needed', 'Download SmolVLM 256M Vision in the model library to read this screenshot locally.')
+        return
+      }
+      await engine.ensureLoaded(modelId, settings.contextLength, {
+        gpuAndroid: settings.gpuAndroid,
+      })
+      if (!engine.getLoadedModalities().vision) {
+        throw new Error('The downloaded local model does not expose vision support.')
+      }
+      const prompt = [
+        'Read the attached screenshot locally and find the clearest event or appointment.',
+        'Return exactly one concise line in this format: Event title tomorrow at 10 AM | optional notes.',
+        'Use today or tomorrow only when the screenshot states a relative date; never invent a missing time.',
+        `User hint: ${text.trim() || '(none)'}`,
+      ].join('\n')
+      const messages = await buildCompletionMessages(
+        [{ role: 'user', content: prompt, attachment }],
+        { vision: true }
+      )
+      let acc = ''
+      const completion = await engine.complete(
+        messages,
+        settings,
+        (token) => {
+          acc += token
+          const parts = splitThinking(acc)
+          setThinkingLive(parts.isThinking)
+          if (parts.answer) setResult(parts.answer)
+        },
+        { enableThinking: false }
+      )
+      const extracted = visibleAnswer(completion.text).replace(/\s+/g, ' ').trim()
+      if (!extracted) throw new Error('The local vision model did not find an event to preview.')
+      if (!hasExplicitCalendarTime(extracted)) {
+        throw new Error('I found event text but not a clear today/tomorrow time. Edit the text before adding it.')
+      }
+      setText(extracted)
+      setResult('')
+      setActionCard(calendarEventCard(extracted))
+    } catch (error: any) {
+      Alert.alert('Could not read screenshot', error?.message ?? 'Local event extraction failed.')
+    } finally {
+      setBusy(false)
+      setBusyLabel('')
+      setThinkingLive(false)
+    }
+  }, [attachment, busy, text])
 
   const previewSaveToDocuments = useCallback(() => {
     const input = text.trim()
@@ -313,6 +386,17 @@ export default function IngestScreen() {
           placeholder="Paste, share, or dictate text here"
           placeholderTextColor={colors.textFaint}
         />
+        {attachment ? (
+          <AttachmentChip
+            attachment={attachment}
+            capabilities={{
+              vision:
+                engine.getLoadedModalities().vision ||
+                downloads.downloadedModelIds().some((id) => Boolean(getModel(id)?.projector)),
+            }}
+            onClear={() => setAttachment(null)}
+          />
+        ) : null}
         {voicePreview ? <Text style={styles.voicePreview}>Heard: {voicePreview}</Text> : null}
       </View>
 
@@ -371,6 +455,18 @@ export default function IngestScreen() {
                 <Text style={styles.chipText}>Add to calendar</Text>
               </View>
             </Pressable>
+            {attachment?.mimeType.startsWith('image/') ? (
+              <Pressable
+                disabled={busy}
+                style={[styles.chip, busy && { opacity: 0.45 }]}
+                onPress={extractCalendarEvent}
+              >
+                <View style={styles.chipContent}>
+                  <Icon name="image" size={16} tintColor={colors.textDim} />
+                  <Text style={styles.chipText}>Extract calendar event</Text>
+                </View>
+              </Pressable>
+            ) : null}
           </View>
         </View>
       </View>
@@ -391,7 +487,7 @@ export default function IngestScreen() {
         <View style={styles.busyRow}>
           <ActivityIndicator color={colors.accent} />
           <Text style={styles.busyText}>
-            {thinkingLive ? 'Thinking…' : `${activeAction?.label}…`}
+            {thinkingLive ? 'Thinking…' : `${busyLabel || activeAction?.label || 'Working'}…`}
           </Text>
         </View>
       )}
