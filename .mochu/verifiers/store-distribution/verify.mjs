@@ -92,7 +92,7 @@ if (contents.release?.includes('signingConfigs.debug') || contents.release?.incl
   failures.push('release: production workflow still references debug signing')
 }
 
-for (const required of ['workflow_dispatch:', "tags: ['store-v*']", 'EXPO_TOKEN', 'npx eas-cli@latest build', '--platform all', '--profile production', '--auto-submit', '--non-interactive', '--wait']) {
+for (const required of ['workflow_dispatch:', "tags: ['store-v*']", 'EXPO_TOKEN', 'npx eas-cli@21.0.2 build', '--platform all', '--profile production', '--auto-submit', '--non-interactive', '--wait']) {
   requireText('store', required, `store workflow ${required}`)
 }
 for (const required of ['EAS', 'Google Play', 'TestFlight', 'EXPO_TOKEN', 'MARMOT_ANDROID_KEYSTORE_BASE64', 'not shipped']) {
