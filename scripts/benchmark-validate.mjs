@@ -1,11 +1,16 @@
 #!/usr/bin/env node
 
 /**
- * Read-only validator for Marmot's benchmark protocol and optional result
+ * Read-only validator for Marmot's benchmark protocol and benchmark result
  * records. Run from any directory inside the repository:
  *
  *   node scripts/benchmark-validate.mjs
  *   node scripts/benchmark-validate.mjs docs/benchmarks/results/run.json
+ *
+ * With no path argument the script discovers every *.json file under
+ * docs/benchmarks/results/ and validates it as a single collection, rejecting
+ * duplicate result_id values across the collection. An explicit path argument
+ * validates only that file (or array) and does not check for duplicates.
  */
 import fs from 'node:fs'
 import path from 'node:path'
@@ -284,8 +289,47 @@ function validateResultArgument() {
   records.forEach((record, index) => validateResultRecord(record, `${target}[${index}]`))
 }
 
+function listResultFiles(dir) {
+  if (!fs.existsSync(dir)) return []
+  return fs.readdirSync(dir)
+    .filter((name) => name.endsWith('.json'))
+    .sort()
+    .map((name) => path.join(dir, name))
+}
+
+function validateResultCollection() {
+  const dir = path.join(repoRoot, 'docs', 'benchmarks', 'results')
+  const files = listResultFiles(dir)
+  if (files.length === 0) return
+  const seenIds = new Map()
+  for (const file of files) {
+    let parsed
+    try {
+      parsed = JSON.parse(fs.readFileSync(file, 'utf8'))
+    } catch (error) {
+      fail(`invalid result JSON ${path.relative(repoRoot, file)}: ${error.message}`)
+      continue
+    }
+    const records = Array.isArray(parsed) ? parsed : [parsed]
+    records.forEach((record, index) => {
+      const label = `${path.relative(repoRoot, file)}[${index}]`
+      validateResultRecord(record, label)
+      const id = record?.result_id
+      if (typeof id === 'string' && id.trim() !== '') {
+        const previous = seenIds.get(id)
+        if (previous) {
+          fail(`duplicate result_id "${id}" in ${label} (also in ${previous})`)
+        } else {
+          seenIds.set(id, label)
+        }
+      }
+    })
+  }
+}
+
 validateDocumentation()
 validateResultArgument()
+if (!process.argv[2]) validateResultCollection()
 
 if (errors.length) {
   console.error(`FAIL: ${errors.length} benchmark validation error(s)`)

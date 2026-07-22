@@ -457,7 +457,10 @@ numbers):
    node scripts/benchmark-validate.mjs docs/benchmarks/results/your-result.json
    ```
 
-   The repository shortcut for the protocol check is `npm run test:benchmark`.
+   With no path, the validator discovers every checked-in JSON result under
+   `docs/benchmarks/results/` and rejects duplicate `result_id` values. The
+   repository shortcut for this protocol-and-results check is
+   `npm run test:benchmark`.
 
 4. In the pull request description, state the exact device row, app commit,
    build type, model/projector hashes, workload settings, number of successful
