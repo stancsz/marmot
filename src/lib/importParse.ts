@@ -48,13 +48,34 @@ function coerceMessage(input: unknown): ChatMessage | null {
   const m = input as Record<string, unknown>
   if (m.role !== 'user' && m.role !== 'assistant' && m.role !== 'system') return null
   if (typeof m.content !== 'string') return null
-  return {
+  const out: ChatMessage = {
     id: typeof m.id === 'string' && m.id ? m.id : `imp-${Math.random().toString(36).slice(2, 10)}`,
     role: m.role,
     content: m.content,
     createdAt: toTime(m.createdAt),
     stats: undefined,
   }
+  // attachments are best-effort restored: if a future export shape carries
+  // them, preserve what we can; missing fields drop the metadata rather
+  // than fabricating a stale uri
+  const a = m.attachment
+  if (a && typeof a === 'object') {
+    const aa = a as Record<string, unknown>
+    if (
+      typeof aa.uri === 'string' &&
+      typeof aa.name === 'string' &&
+      typeof aa.mimeType === 'string' &&
+      typeof aa.sizeBytes === 'number'
+    ) {
+      out.attachment = {
+        uri: aa.uri,
+        name: aa.name,
+        mimeType: aa.mimeType,
+        sizeBytes: aa.sizeBytes,
+      }
+    }
+  }
+  return out
 }
 
 function toTime(v: unknown): number {

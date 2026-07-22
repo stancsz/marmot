@@ -5,8 +5,8 @@
 <h3 align="center">Marmot</h3>
 
 <p align="center">
-  <b>Ollama for your phone.</b><br/>
-  Download small open models. Chat with them entirely on-device.<br/>
+  <b>Share to action, privately on your phone.</b><br/>
+  Understand screenshots, receipts, messages, and documents locally.<br/>
   No account, no cloud, no telemetry — works in airplane mode.
 </p>
 
@@ -23,6 +23,17 @@
 </p>
 
 ---
+
+## The flagship loop
+
+Share something → understand it locally → propose the next action → approve and execute it on the phone.
+Marmot turns a screenshot, receipt, message, or document into an editable
+preview for a calendar event, reminder, draft reply, or saved note. Nothing is
+written or sent until you approve it.
+
+> share something → understand it locally → propose the next action → approve and execute it on the phone
+
+The canonical repository is [github.com/stancsz/marmot](https://github.com/stancsz/marmot).
 
 ## What is Marmot?
 
@@ -124,6 +135,11 @@ NEON are considerably faster).
 
 **Models & data**
 
+- **Vision attachments** — the SmolVLM 256M starter model downloads with its
+  paired projector, so screenshots and receipts can be understood locally;
+  PDFs and audio remain explicitly unsupported until their dedicated paths are
+  shipped.
+
 - 📦 **Resumable downloads** that continue in the background and survive
   restarts; a `.gguf` on disk is always complete (atomic `.part` moves).
 - 📱 **RAM-fit badges** ("Runs great / Should run / May be too big") from
@@ -140,14 +156,17 @@ NEON are considerably faster).
 
 | Class | Model | Download | Runs on | Why it's the pick |
 | --- | --- | --- | --- | --- |
+| Vision starter | SmolVLM 256M Vision | 365 MB | ~1.5 GB+ RAM | Local screenshot and receipt understanding with a paired projector |
 | 🪶 Featherweight | Qwen3.5 0.8B | 0.53 GB | any phone | Rated far above every other sub-1B; 200+ languages |
 | 🥊 Lightweight | Qwen3.5 2B | 1.28 GB | 4–6 GB RAM | Beats Gemma 4 E2B on reasoning, GPQA, intelligence |
 | 🥋 Middleweight | SmolLM3 3B | 1.92 GB | 6 GB RAM | Strongest fully-open 3B, dual-mode reasoning |
 | 🏋️ Cruiserweight | Qwen3.5 4B | 2.74 GB | 8 GB RAM | Strongest dense 4B: knowledge, science, agentic wins |
 | 👑 Heavyweight | Gemma 4 E4B | 4.06 GB | 12 GB+ RAM | 8B weights at a 4B footprint; closest to cloud quality |
 
-All Apache 2.0. Q4_K_M GGUF builds (Gemma 4 E4B ships as Q3_K_M to stay
-phone-sized) from [unsloth](https://huggingface.co/unsloth), with URLs and
+All catalog entries use Apache 2.0 licenses. Text models are Q4_K_M GGUF builds
+(Gemma 4 E4B ships as Q3_K_M to stay phone-sized) from
+[unsloth](https://huggingface.co/unsloth); the SmolVLM vision starter uses the
+ggml-org build. URLs and
 exact byte sizes verified against the hosted files. Rankings from
 [Artificial Analysis](https://artificialanalysis.ai) and per-tier benchmark
 comparisons; re-evaluated as new models ship. Beyond the catalog, any local
@@ -156,10 +175,9 @@ library) and used as a first-class model.
 
 ## Getting started
 
-**Just want the app?** Grab the latest Android APK from
-[Releases](https://github.com/stancsz/marmot/releases) and sideload it
-(built automatically by the Release workflow; iOS requires building from
-source with Xcode for now).
+**Just want the app?** [Download the latest Android APK](https://github.com/stancsz/marmot/releases/latest/download/marmot.apk)
+and sideload it. Browse [release history](https://github.com/stancsz/marmot/releases)
+for checksums and notes. iOS requires building from source with Xcode for now.
 
 Building from source: Marmot uses native modules, so it needs a development
 build (not Expo Go).
@@ -232,13 +250,35 @@ the hosted file — the download manager and RAM-fit badges depend on it.
 
 ## What's next
 
-The mechanisms are already designed in
-[docs/CAPABILITIES.md](docs/CAPABILITIES.md):
+Image and screenshot attachments are now locally grounded through the SmolVLM
+starter path, and Flight mode now provides five bounded offline activities.
+The next product work is turning extracted facts into typed action previews,
+then adding explicit companion milestone saves; PDF/audio decoding remains a
+separate milestone.
 
-- [ ] whisper.rn ASR (offline meeting-grade transcription) + background audio
-- [ ] Phone file organization (Android SAF, plan → approve → apply with undo)
-- [ ] True git via isomorphic-git; neural TTS; speaker diarization
-- [ ] On-device E2E benchmark results (needs real hardware)
+The next product release is **E4B-first**: make a capable phone immediately
+feel like a private, multimodal assistant. The flagship loop is:
+
+**share something → understand it locally → propose the next action → approve
+and execute it on the phone.**
+
+Near-term priorities:
+
+- [x] Chat UI/UX foundation: professional icons, accessible touch targets, fluid state motion, clean Markdown history previews, model dropdown, and calm left history drawer
+- [x] E4B device-fit detection, model recommendation, and offline first-run demo
+- [x] Native Share-to-Marmot with action cards for summarize, extract, reply, save, and explain
+- [x] Local text/Markdown attachments with bounded grounding and an explicit untrusted-data boundary
+- [x] Screenshot/image grounding for E4B-capable devices; [ ] PDF/audio decoding
+- [x] Bounded Flight mode with local-only activities and no background work
+- [x] Calendar event preview, explicit approval, local-calendar fallback, and undo
+- [ ] Reminders, contacts, and approval-gated compose actions
+- [ ] Personal context with projects, grounded sources, and local retrieval
+- [ ] Voice notes → transcript → decisions/action items → reminders
+- [ ] Validate the core loop on real E4B hardware, then add one email provider
+
+Web research, MCP, repo coding, file organization, live meeting participation,
+and deep research remain available as advanced Labs. The full product roadmap
+and quality bar live in [docs/CAPABILITIES.md](docs/CAPABILITIES.md).
 
 ## Contributing
 

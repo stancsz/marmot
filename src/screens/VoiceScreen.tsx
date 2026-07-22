@@ -25,6 +25,7 @@ import { visibleAnswer } from '../lib/thinking'
 import { InferenceSettings } from '../types'
 import { Palette, radius, spacing, themedStyles } from '../theme'
 import { useTheme } from '../ThemeContext'
+import Icon from '../components/Icon'
 
 type Mode = 'conversation' | 'meeting'
 
@@ -398,7 +399,11 @@ export default function VoiceScreen() {
           ))}
         </View>
 
-        <Pressable onPress={active ? stop : start}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={active ? 'Stop voice mode' : 'Start voice mode'}
+          onPress={active ? stop : start}
+        >
           <View style={styles.orbArea}>
             <Animated.View
               style={[styles.glowOuter, { borderColor: phaseColor, opacity: ringOpacity }]}
@@ -410,7 +415,7 @@ export default function VoiceScreen() {
                 { transform: [{ scale: orbScale }], borderColor: phaseColor },
               ]}
             >
-              <Text style={styles.orbIcon}>{active ? '⏹' : '🎙'}</Text>
+              <Icon name={active ? 'stop' : 'mic'} size={32} tintColor={colors.text} weight="semibold" />
             </Animated.View>
           </View>
         </Pressable>
@@ -544,7 +549,6 @@ const getStyles = themedStyles((colors: Palette) =>
       shadowOffset: { width: 0, height: 6 },
       elevation: 8,
     },
-    orbIcon: { fontSize: 34 },
     statusText: { color: colors.textDim, fontSize: 15, maxWidth: 280 },
     endPill: {
       backgroundColor: colors.surface,

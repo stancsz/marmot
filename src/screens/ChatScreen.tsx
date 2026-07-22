@@ -6,17 +6,17 @@ import {
   KeyboardAvoidingView,
   Platform,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from 'react-native'
+import Animated, { FadeIn, FadeInDown, FadeInUp, FadeOut, FadeOutUp, LinearTransition } from 'react-native-reanimated'
 import { useFocusEffect, useNavigation, useRoute, RouteProp } from '@react-navigation/native'
 import { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import { useHeaderHeight } from '@react-navigation/elements'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { Chat, ChatMessage, InferenceSettings, ModelId, ModelSpec } from '../types'
+import { Attachment, Chat, ChatMessage, InferenceSettings, ModelId, ModelSpec } from '../types'
 import {
   chatTitleFrom,
   loadChats,
@@ -31,14 +31,28 @@ import { downloads } from '../lib/downloads'
 import { shareChatAsMarkdown } from '../lib/exportShare'
 import { agentMemory, runAgentTask, verifyAgentAnswer } from '../lib/agentRuntime'
 import { AgentCancelled, AgentStep, Plan, episodicSummary, markDone } from '../agent'
-import { CATALOG } from '../models/catalog'
+import { CATALOG, hasVision, totalDownloadBytes } from '../models/catalog'
 import { customModelsCache, loadCustomModels, resolveModel } from '../lib/customModels'
 import { splitThinking } from '../lib/thinking'
 import { useKeyboardHeight } from '../lib/useKeyboardHeight'
 import { buildResearchTask } from '../lib/textActions'
+import { pickAttachment } from '../lib/attachments'
+import {
+  buildCompletionMessages,
+  loadAttachmentContext,
+  type AttachmentCapabilities,
+} from '../lib/attachmentContext'
+import { LOCAL_DEMO_PROMPT, LOCAL_DEMO_PROOF } from '../lib/localDemo'
 import MarkdownText from '../components/MarkdownText'
+import AttachmentButton from '../components/AttachmentButton'
+import AttachmentChip from '../components/AttachmentChip'
+import Icon from '../components/Icon'
+import type { IconName } from '../components/Icon'
+import IconButton from '../components/IconButton'
+import SelectMenu from '../components/SelectMenu'
 import { Palette, radius, spacing, themedStyles } from '../theme'
 import { useTheme } from '../ThemeContext'
+import { CHAT_MOTION, CHAT_TOUCH_TARGET, COMPOSER_MIN_HEIGHT, composerAction } from '../lib/chatUi'
 import type { RootStackParamList } from '../navigation'
 
 type Nav = NativeStackNavigationProp<RootStackParamList>
@@ -62,6 +76,7 @@ function confirmRiskyLoad(modelName: string): Promise<boolean> {
 export default function ChatScreen() {
   const navigation = useNavigation<Nav>()
   const route = useRoute<Route>()
+  const demoRequested = route.params?.demo === true
   const headerHeight = useHeaderHeight()
   const insets = useSafeAreaInsets()
   const keyboardHeight = useKeyboardHeight()
@@ -71,6 +86,7 @@ export default function ChatScreen() {
   const [chat, setChat] = useState<Chat | null>(null)
   const [settings, setSettings] = useState<InferenceSettings | null>(null)
   const [input, setInput] = useState('')
+  const [pendingAttachment, setPendingAttachment] = useState<Attachment | null>(null)
   const [streaming, setStreaming] = useState('')
   const [phase, setPhase] = useState<'idle' | 'loading-model' | 'generating'>('idle')
   const [error, setError] = useState<string | null>(null)
@@ -175,15 +191,16 @@ export default function ChatScreen() {
       title: model ? model.name : 'Chat',
       headerRight: hasMessages
         ? () => (
-            <Pressable
-              hitSlop={12}
+            <IconButton
+              accessibilityLabel="Share chat"
+              hitSlop={8}
+              icon="share"
               onPress={() => {
                 const current = chatRef.current
                 if (current) shareChatAsMarkdown(current).catch(() => {})
               }}
-            >
-              <Text style={{ color: colors.textDim, fontSize: 15 }}>Share</Text>
-            </Pressable>
+              variant="ghost"
+            />
           )
         : undefined,
     })
@@ -194,10 +211,11 @@ export default function ChatScreen() {
     await saveChat(next)
   }, [])
 
-  const send = useCallback(async () => {
-    const text = input.trim()
+  const send = useCallback(async (promptOverride?: string) => {
+    const text = (promptOverride ?? input).trim()
     const current = chatRef.current
-    if (!text || !current || !current.modelId || !settings) return
+    const attachment = pendingAttachment
+    if ((!text && !attachment) || !current || !current.modelId || !settings) return
     if (phase !== 'idle') return
 
     // loading a different model is the expensive, risky step — warn before
@@ -206,37 +224,55 @@ export default function ChatScreen() {
     // in swap thrashing badly enough that even Stop stops responding.
     if (engine.getLoadedModelId() !== current.modelId) {
       const spec = resolveModel(current.modelId)
-      if (spec && ramFit(spec.sizeBytes) === 'risky' && !(await confirmRiskyLoad(spec.name))) {
+      if (spec && ramFit(totalDownloadBytes(spec)) === 'risky' && !(await confirmRiskyLoad(spec.name))) {
         return
       }
     }
 
+    if (agentMode && attachment?.mimeType.startsWith('image/')) {
+      setError('Image understanding is available in Chat mode. Turn off Agent to use it.')
+      return
+    }
+
     setError(null)
     setInput('')
+    setPendingAttachment(null)
     setAgentSteps([])
     planRef.current = null
     setAgentPlan(null)
     cancelRef.current = false
-    const userMsg = newMessage('user', text)
+    const userMsg = newMessage('user', text || (attachment ? `Attached: ${attachment.name}` : ''), attachment ?? undefined)
     let working: Chat = {
       ...current,
-      title: current.messages.length === 0 ? chatTitleFrom(text) : current.title,
+      title: current.messages.length === 0 ? chatTitleFrom(text || attachment?.name || '') : current.title,
       messages: [...current.messages, userMsg],
       updatedAt: Date.now(),
     }
-    await persist(working)
+    let sendStage = 'saving the message'
 
     try {
+      await persist(working)
+      sendStage = 'loading the model'
       setPhase('loading-model')
       await engine.ensureLoaded(working.modelId!, settings.contextLength, {
         gpuAndroid: settings.gpuAndroid,
       })
+      const loadedModalities = engine.getLoadedModalities()
+      sendStage = 'preparing the response'
       setPhase('generating')
       setStreaming('')
 
       if (agentMode) {
+        sendStage = 'reading the attachment'
+        const attachmentContext = attachment
+          ? await loadAttachmentContext(attachment, loadedModalities)
+          : null
+        const task = [
+          text || (attachment ? `Please help me with ${attachment.name}.` : ''),
+          attachmentContext?.prompt,
+        ].filter(Boolean).join('\n\n')
         const result = await runAgentTask(
-          deepResearch && settings.allowWeb ? buildResearchTask(text) : text,
+          deepResearch && settings.allowWeb ? buildResearchTask(task) : task,
           settings,
           () => cancelRef.current,
           (step) => {
@@ -303,20 +339,29 @@ export default function ChatScreen() {
         return
       }
 
+      sendStage = 'building the conversation'
       const history = [
         { role: 'system' as const, content: settings.systemPrompt },
-        ...working.messages.map((m) => ({ role: m.role, content: m.content })),
+        ...(await buildCompletionMessages(working.messages, loadedModalities)),
       ]
+      const isLocalDemo = promptOverride === LOCAL_DEMO_PROMPT
+      const hasLocalAttachment = working.messages.some((message) => Boolean(message.attachment))
+      const completionSettings = isLocalDemo
+        ? { ...settings, maxTokens: Math.min(settings.maxTokens, 64) }
+        : hasLocalAttachment
+          ? { ...settings, maxTokens: Math.min(settings.maxTokens, 128) }
+          : settings
+      sendStage = 'generating the response'
       let acc = ''
       let lastFlush = 0
-      const result = await engine.complete(history, settings, (token) => {
+      const result = await engine.complete(history, completionSettings, (token) => {
         acc += token
         const now = Date.now()
         if (now - lastFlush >= STREAM_FLUSH_MS) {
           lastFlush = now
           setStreaming(acc)
         }
-      })
+      }, isLocalDemo || hasLocalAttachment ? { enableThinking: false } : undefined)
 
       // never persist raw <think> tags: if the model was stopped mid-
       // reasoning and produced no answer, fall back to the stripped
@@ -332,16 +377,20 @@ export default function ChatScreen() {
         messages: [...working.messages, assistantMsg],
         updatedAt: Date.now(),
       }
+      sendStage = 'saving the response'
       await persist(working)
       agentMemory.add('episodic', episodicSummary(text, content)).catch(() => {})
     } catch (e: any) {
       if (e instanceof AgentCancelled) setError('Stopped.')
-      else setError(e?.message ?? 'Generation failed')
+      else {
+        console.error('[ChatScreen] send failed', sendStage, e?.stack ?? e)
+        setError(e?.message ?? `Could not finish while ${sendStage}.`)
+      }
     } finally {
       setStreaming('')
       setPhase('idle')
     }
-  }, [input, settings, phase, agentMode, persist])
+  }, [input, pendingAttachment, settings, phase, agentMode, persist])
 
   const stop = useCallback(() => {
     cancelRef.current = true
@@ -372,6 +421,21 @@ export default function ChatScreen() {
   }
 
   const streamingParts = streaming ? splitThinking(streaming) : null
+  const availableModels = [...CATALOG.filter((m) => downloadedIds.includes(m.id)), ...customModels]
+  const selectedModel = resolveModel(chat.modelId)
+  const selectedModelReady = Boolean(
+    chat.modelId &&
+      (downloadedIds.includes(chat.modelId) || customModels.some((model) => model.id === chat.modelId))
+  )
+  const attachmentCapabilities: AttachmentCapabilities = {
+    // The selected, fully downloaded vision model is ready to inspect an
+    // image when sent; the engine itself is loaded lazily at send time.
+    vision: Boolean(
+      selectedModel &&
+        hasVision(selectedModel) &&
+        ((engine.getLoadedModelId() === chat.modelId && engine.getLoadedModalities().vision) || selectedModelReady)
+    ),
+  }
 
   return (
     <KeyboardAvoidingView
@@ -379,53 +443,58 @@ export default function ChatScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       keyboardVerticalOffset={Platform.OS === 'ios' ? headerHeight : 0}
     >
-      {/* model picker strip + agent toggle */}
-      <View style={styles.modelStripWrap}>
-        <Pressable
+      {/* model selector + agent modes */}
+      <Animated.View
+        entering={FadeIn.duration(CHAT_MOTION.enter)}
+        layout={LinearTransition.duration(CHAT_MOTION.layout)}
+        style={styles.modelToolbar}
+      >
+        <SelectMenu
+          accessibilityLabel="Choose model"
           disabled={phase !== 'idle'}
-          hitSlop={6}
-          style={[styles.agentChip, agentMode && styles.agentChipActive]}
-          onPress={() => setAgentMode((v) => !v)}
-        >
-          <Text style={[styles.agentChipText, agentMode && styles.agentChipTextActive]}>
-            ⚙ Agent
-          </Text>
-        </Pressable>
-        {agentMode && settings.allowWeb && (
+          leadingIcon="models"
+          onSelect={(modelId) => persist({ ...chat, modelId })}
+          options={availableModels.map((model) => ({
+            id: model.id,
+            label: model.name,
+            detail: `${model.params} · ${model.quant}`,
+          }))}
+          selectedId={chat.modelId}
+          title="Model"
+        />
+        <View style={styles.modeRow}>
           <Pressable
+            accessibilityRole="button"
+            accessibilityState={{ disabled: phase !== 'idle', selected: agentMode }}
+            accessibilityLabel="Toggle Agent mode"
             disabled={phase !== 'idle'}
             hitSlop={6}
-            style={[styles.agentChip, deepResearch && styles.researchChipActive]}
-            onPress={() => setDeepResearch((v) => !v)}
+            style={[styles.agentChip, agentMode && styles.agentChipActive]}
+            onPress={() => setAgentMode((v) => !v)}
           >
-            <Text style={[styles.agentChipText, deepResearch && styles.agentChipTextActive]}>
-              🔬 Research
-            </Text>
+            <View style={styles.chipContent}>
+              <Icon name="agent" size={16} tintColor={agentMode ? colors.bg : colors.textDim} />
+              <Text style={[styles.agentChipText, agentMode && styles.agentChipTextActive]}>Agent</Text>
+            </View>
           </Pressable>
-        )}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.modelStrip}
-        >
-          {[...CATALOG.filter((m) => downloadedIds.includes(m.id)), ...customModels].map((m) => {
-            const active = chat.modelId === m.id
-            return (
-              <Pressable
-                key={m.id}
-                disabled={phase !== 'idle'}
-                hitSlop={6}
-                style={[styles.modelChip, active && styles.modelChipActive]}
-                onPress={() => persist({ ...chat, modelId: m.id })}
-              >
-                <Text style={[styles.modelChipText, active && styles.modelChipTextActive]}>
-                  {m.name}
-                </Text>
-              </Pressable>
-            )
-          })}
-        </ScrollView>
-      </View>
+          {agentMode && settings.allowWeb && (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityState={{ disabled: phase !== 'idle', selected: deepResearch }}
+              accessibilityLabel="Toggle research mode"
+              disabled={phase !== 'idle'}
+              hitSlop={6}
+              style={[styles.agentChip, deepResearch && styles.researchChipActive]}
+              onPress={() => setDeepResearch((v) => !v)}
+            >
+              <View style={styles.chipContent}>
+                <Icon name="research" size={16} tintColor={deepResearch ? colors.bg : colors.textDim} />
+                <Text style={[styles.agentChipText, deepResearch && styles.agentChipTextActive]}>Research</Text>
+              </View>
+            </Pressable>
+          )}
+        </View>
+      </Animated.View>
 
       <FlatList
         ref={listRef}
@@ -433,122 +502,235 @@ export default function ChatScreen() {
         keyExtractor={(m) => m.id}
         contentContainerStyle={{ padding: spacing.lg, gap: spacing.md }}
         onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: false })}
-        renderItem={({ item }) => <Bubble message={item} />}
+        renderItem={({ item }) => <Bubble message={item} capabilities={attachmentCapabilities} />}
         ListEmptyComponent={
           phase === 'idle' ? (
-            <View style={styles.chatEmpty}>
+            demoRequested ? (
+              <LocalDemoCard onRun={() => send(LOCAL_DEMO_PROMPT)} />
+            ) : (
+              <View style={styles.chatEmpty}>
               <Text style={styles.chatEmptyText}>
                 Ask anything — everything runs on your phone.
               </Text>
-            </View>
+              </View>
+            )
           ) : null
         }
         ListFooterComponent={
           <>
             {phase === 'loading-model' && (
-              <StatusRow text={`Loading ${resolveModel(chat.modelId)?.name ?? 'model'}…`} spinner />
+              <Animated.View
+                entering={FadeIn.duration(CHAT_MOTION.enter)}
+                exiting={FadeOut.duration(CHAT_MOTION.exit)}
+                layout={LinearTransition.duration(CHAT_MOTION.layout)}
+              >
+                <StatusRow text={`Loading ${resolveModel(chat.modelId)?.name ?? 'model'}…`} spinner />
+              </Animated.View>
             )}
             {agentPlan && (
-              <View style={styles.planPanel}>
+              <Animated.View
+                entering={FadeInDown.duration(CHAT_MOTION.enter)}
+                exiting={FadeOutUp.duration(CHAT_MOTION.exit)}
+                layout={LinearTransition.duration(CHAT_MOTION.layout)}
+                style={styles.planPanel}
+              >
                 <Text style={styles.planTitle}>Plan</Text>
                 {agentPlan.steps.map((s) => (
                   <View key={s.id} style={styles.planRow}>
-                    <Text style={[styles.planBox, s.done && styles.planBoxDone]}>
-                      {s.done ? '☑' : '☐'}
-                    </Text>
+                    <Icon
+                      name={s.done ? 'check' : 'observation'}
+                      size={16}
+                      tintColor={s.done ? colors.green : colors.textFaint}
+                    />
                     <Text style={[styles.planText, s.done && styles.planTextDone]}>{s.text}</Text>
                   </View>
                 ))}
-              </View>
+              </Animated.View>
             )}
             {agentSteps.length > 0 && (
-              <View style={styles.stepTimeline}>
+              <Animated.View
+                entering={FadeIn.duration(CHAT_MOTION.enter)}
+                exiting={FadeOut.duration(CHAT_MOTION.exit)}
+                layout={LinearTransition.duration(CHAT_MOTION.layout)}
+                style={styles.stepTimeline}
+              >
                 {agentSteps.map((s, i) => (
                   <StepRow key={i} step={s} />
                 ))}
-              </View>
+              </Animated.View>
             )}
             {phase === 'generating' && agentMode && (
-              <StatusRow text={verifying ? 'Verifying answer…' : 'Agent working…'} spinner />
+              <Animated.View
+                entering={FadeIn.duration(CHAT_MOTION.enter)}
+                exiting={FadeOut.duration(CHAT_MOTION.exit)}
+              >
+                <StatusRow text={verifying ? 'Verifying answer…' : 'Agent working…'} spinner />
+              </Animated.View>
             )}
             {phase === 'generating' && !agentMode && streamingParts && (
-              <View style={[styles.bubble, styles.assistantBubble]}>
+              <Animated.View
+                entering={FadeInUp.duration(CHAT_MOTION.enter)}
+                exiting={FadeOutUp.duration(CHAT_MOTION.exit)}
+                layout={LinearTransition.duration(CHAT_MOTION.layout)}
+                style={[styles.bubble, styles.assistantBubble]}
+              >
                 {streamingParts.isThinking && !streamingParts.answer ? (
                   <Text style={styles.thinkingText}>Thinking…</Text>
                 ) : (
                   <Text style={styles.bubbleText}>{streamingParts.answer || ' '}</Text>
                 )}
-              </View>
+              </Animated.View>
             )}
             {phase === 'generating' && !agentMode && !streamingParts && (
-              <StatusRow text="…" spinner />
+              <Animated.View entering={FadeIn.duration(CHAT_MOTION.enter)} exiting={FadeOut.duration(CHAT_MOTION.exit)}>
+                <StatusRow text="Preparing response" spinner />
+              </Animated.View>
             )}
-            {error && <Text style={styles.errorText}>{error}</Text>}
+            {error && (
+              <Animated.Text entering={FadeInDown.duration(CHAT_MOTION.enter)} exiting={FadeOut.duration(CHAT_MOTION.exit)} style={styles.errorText}>
+                {error}
+              </Animated.Text>
+            )}
           </>
         }
       />
 
-      <View style={[styles.inputRow, { paddingBottom: spacing.md + (keyboardHeight > 0 ? keyboardHeight : insets.bottom) }]}>
-        <Pressable
-          style={styles.micBtn}
-          hitSlop={8}
-          disabled={phase !== 'idle'}
-          onPress={() => navigation.navigate('Voice')}
-        >
-          <Text style={styles.micIcon}>🎙</Text>
-        </Pressable>
-        <TextInput
-          style={styles.input}
-          placeholder="Message"
-          placeholderTextColor={colors.textFaint}
-          value={input}
-          onChangeText={setInput}
-          multiline
-          editable={phase !== 'generating'}
-        />
-        {phase === 'generating' ? (
-          <Pressable style={[styles.sendBtn, styles.stopBtn]} onPress={stop}>
-            <Text style={styles.sendBtnText}>Stop</Text>
-          </Pressable>
-        ) : (
-          <Pressable
-            style={[styles.sendBtn, !input.trim() && styles.sendBtnDisabled]}
-            onPress={send}
-            disabled={!input.trim() || phase !== 'idle'}
+      <Animated.View
+        layout={LinearTransition.duration(CHAT_MOTION.layout)}
+        style={[styles.inputArea, { paddingBottom: spacing.md + (keyboardHeight > 0 ? keyboardHeight : insets.bottom) }]}
+      >
+        {pendingAttachment ? (
+          <Animated.View
+            entering={FadeInDown.duration(CHAT_MOTION.enter)}
+            exiting={FadeOutUp.duration(CHAT_MOTION.exit)}
+            layout={LinearTransition.duration(CHAT_MOTION.layout)}
           >
-            <Text style={styles.sendBtnText}>Send</Text>
-          </Pressable>
-        )}
-      </View>
+            <AttachmentChip
+              attachment={pendingAttachment}
+              capabilities={attachmentCapabilities}
+              onClear={() => setPendingAttachment(null)}
+            />
+          </Animated.View>
+        ) : null}
+        <View style={styles.inputRow}>
+          <IconButton
+            accessibilityLabel="Open voice mode"
+            accessibilityHint="Opens voice input without sending the current draft"
+            disabled={phase !== 'idle'}
+            onPress={() => navigation.navigate('Voice')}
+            icon="mic"
+            variant="secondary"
+          />
+          <AttachmentButton
+            disabled={phase !== 'idle'}
+            onPick={async () => {
+              const att = await pickAttachment()
+              if (att) setPendingAttachment(att)
+            }}
+          />
+          <TextInput
+            style={styles.input}
+            placeholder="Message"
+            placeholderTextColor={colors.textFaint}
+            value={input}
+            onChangeText={setInput}
+            multiline
+            editable={phase !== 'generating'}
+          />
+          {composerAction({ phase, hasContent: Boolean(input.trim() || pendingAttachment) }) === 'stop' ? (
+            <IconButton
+              accessibilityLabel="Stop generating"
+              accessibilityHint="Stops the current response and keeps the conversation"
+              onPress={stop}
+              icon="stop"
+              variant="danger"
+            />
+          ) : (
+            <IconButton
+              accessibilityLabel="Send message"
+              accessibilityHint="Sends the current message"
+              disabled={composerAction({ phase, hasContent: Boolean(input.trim() || pendingAttachment) }) === 'disabled'}
+              onPress={() => send()}
+              icon="send"
+              variant="primary"
+            />
+          )}
+        </View>
+      </Animated.View>
     </KeyboardAvoidingView>
   )
 }
 
-function Bubble({ message }: { message: ChatMessage }) {
+function LocalDemoCard({ onRun }: { onRun: () => void }) {
+  const { colors } = useTheme()
+  const styles = getStyles(colors)
+  return (
+    <Animated.View entering={FadeInDown.duration(CHAT_MOTION.enter)} style={styles.localDemoCard}>
+      <View style={styles.localDemoHeader}>
+        <Icon name="check" size={18} tintColor={colors.green} />
+        <Text style={styles.localDemoEyebrow}>Local-only demo</Text>
+      </View>
+      <Text style={styles.localDemoTitle}>See a real answer from your model</Text>
+      <Text style={styles.localDemoPrompt}>{LOCAL_DEMO_PROMPT}</Text>
+      <View style={styles.localDemoProof}>
+        <Icon name="check" size={15} tintColor={colors.textDim} />
+        <Text style={styles.localDemoProofText}>{LOCAL_DEMO_PROOF}</Text>
+      </View>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Run local demo"
+        style={styles.primaryBtn}
+        onPress={onRun}
+      >
+        <Text style={styles.primaryBtnText}>Run local demo</Text>
+      </Pressable>
+    </Animated.View>
+  )
+}
+
+function Bubble({
+  message,
+  capabilities,
+}: {
+  message: ChatMessage
+  capabilities?: AttachmentCapabilities
+}) {
   const { colors } = useTheme()
   const styles = getStyles(colors)
   const isUser = message.role === 'user'
   const verify = message.stats?.verify
   return (
-    <View style={[styles.bubble, isUser ? styles.userBubble : styles.assistantBubble]}>
+    <Animated.View
+      entering={FadeInUp.duration(CHAT_MOTION.enter)}
+      layout={LinearTransition.duration(CHAT_MOTION.layout)}
+      style={[styles.bubble, isUser ? styles.userBubble : styles.assistantBubble]}
+    >
+      {message.attachment ? <AttachmentChip attachment={message.attachment} capabilities={capabilities} /> : null}
       {isUser ? (
-        <Text style={styles.bubbleText}>{message.content}</Text>
+        <Text selectable style={styles.bubbleText}>{message.content}</Text>
       ) : (
         <MarkdownText text={message.content} />
       )}
       {message.stats?.tokensPerSecond ? (
-        <Text style={styles.statsText}>
+        <Text selectable style={styles.statsText}>
           {message.stats.tokensPerSecond.toFixed(1)} tok/s
           {message.stats.predictedTokens ? ` · ${message.stats.predictedTokens} tok` : ''}
         </Text>
       ) : null}
       {verify ? (
-        <Text style={[styles.verifyBadge, { color: verify.accept ? colors.green : colors.yellow }]}>
-          {verify.accept ? '✓ verified' : '⚠ judge'} {verify.score}/10
-          {verify.revised ? ' · revised' : ''}
-        </Text>
+        <View style={styles.verifyRow}>
+          <Icon
+            name={verify.accept ? 'check' : 'warning'}
+            size={14}
+            tintColor={verify.accept ? colors.green : colors.yellow}
+          />
+          <Text selectable style={[styles.verifyBadge, { color: verify.accept ? colors.green : colors.yellow }]}>
+            {verify.accept ? 'Verified' : 'Judge'} {verify.score}/10
+            {verify.revised ? ' · revised' : ''}
+          </Text>
+        </View>
       ) : null}
-    </View>
+    </Animated.View>
   )
 }
 
@@ -566,8 +748,18 @@ function StatusRow({ text, spinner }: { text: string; spinner?: boolean }) {
 function StepRow({ step }: { step: AgentStep }) {
   const { colors } = useTheme()
   const styles = getStyles(colors)
-  const icon =
-    step.kind === 'thought' ? '💭' : step.kind === 'tool_call' ? '🔧' : step.kind === 'observation' ? '↳' : step.kind === 'error' ? '⚠' : step.kind === 'subtask' ? '▶' : '✓'
+  const icon: IconName =
+    step.kind === 'thought'
+      ? 'thought'
+      : step.kind === 'tool_call'
+        ? 'tool'
+        : step.kind === 'observation'
+          ? 'observation'
+          : step.kind === 'error'
+            ? 'warning'
+            : step.kind === 'subtask'
+              ? 'subtask'
+              : 'check'
   const label =
     step.kind === 'tool_call'
       ? `${step.tool} ${step.content}`
@@ -575,7 +767,7 @@ function StepRow({ step }: { step: AgentStep }) {
   if (step.kind === 'final' || step.kind === 'plan_check') return null // shown elsewhere
   return (
     <View style={styles.stepRow}>
-      <Text style={styles.stepIcon}>{icon}</Text>
+      <Icon name={icon} size={15} tintColor={step.kind === 'error' ? colors.red : colors.textDim} />
       <Text
         style={[
           styles.stepText,
@@ -602,16 +794,18 @@ const getStyles = themedStyles((colors: Palette) =>
     paddingHorizontal: spacing.xl,
     paddingVertical: spacing.md,
     borderRadius: radius.pill,
+    borderCurve: 'continuous',
   },
   primaryBtnText: { color: colors.accentText, fontWeight: '700', fontSize: 16 },
-  modelStripWrap: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  modelToolbar: {
+    gap: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
+  modeRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   agentChip: {
-    marginLeft: spacing.lg,
     paddingHorizontal: spacing.md,
     paddingVertical: 6,
     borderRadius: radius.pill,
@@ -623,19 +817,20 @@ const getStyles = themedStyles((colors: Palette) =>
   researchChipActive: { backgroundColor: colors.accent, borderColor: colors.accent },
   agentChipText: { color: colors.textDim, fontSize: 13, fontWeight: '600' },
   agentChipTextActive: { color: colors.bg },
+  chipContent: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
   stepTimeline: {
     gap: spacing.xs,
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.sm,
   },
   stepRow: { flexDirection: 'row', gap: spacing.sm, alignItems: 'flex-start' },
-  stepIcon: { fontSize: 12, width: 18, textAlign: 'center' },
   stepText: { color: colors.textDim, fontSize: 12, flex: 1, lineHeight: 17 },
   planPanel: {
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: radius.md,
+    borderCurve: 'continuous',
     padding: spacing.md,
     gap: spacing.xs,
     marginBottom: spacing.sm,
@@ -649,32 +844,45 @@ const getStyles = themedStyles((colors: Palette) =>
     marginBottom: 2,
   },
   planRow: { flexDirection: 'row', gap: spacing.sm, alignItems: 'flex-start' },
-  planBox: { color: colors.textFaint, fontSize: 13, width: 18 },
-  planBoxDone: { color: colors.green },
   planText: { color: colors.text, fontSize: 13, flex: 1, lineHeight: 18 },
   planTextDone: { color: colors.textFaint, textDecorationLine: 'line-through' },
-  modelStrip: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm,
+  localDemoCard: {
+    backgroundColor: colors.surfaceAlt,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.green,
+    borderCurve: 'continuous',
+    padding: spacing.lg,
+    gap: spacing.md,
+    marginTop: spacing.xl,
   },
-  chatEmpty: { alignItems: 'center', paddingTop: 120, paddingHorizontal: spacing.xl },
-  chatEmptyText: { color: colors.textFaint, fontSize: 14, textAlign: 'center' },
-  modelChip: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: 6,
-    borderRadius: radius.pill,
+  localDemoHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  localDemoEyebrow: {
+    color: colors.green,
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+  },
+  localDemoTitle: { color: colors.text, fontSize: 18, fontWeight: '700' },
+  localDemoPrompt: {
+    color: colors.text,
     backgroundColor: colors.surface,
+    borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.border,
+    padding: spacing.md,
+    fontSize: 14,
+    lineHeight: 20,
   },
-  modelChipActive: { backgroundColor: colors.accent, borderColor: colors.accent },
-  modelChipText: { color: colors.textDim, fontSize: 13, fontWeight: '600' },
-  modelChipTextActive: { color: colors.accentText },
+  localDemoProof: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm },
+  localDemoProofText: { color: colors.textDim, flex: 1, fontSize: 12, lineHeight: 17 },
+  chatEmpty: { alignItems: 'center', paddingTop: 120, paddingHorizontal: spacing.xl },
+  chatEmptyText: { color: colors.textFaint, fontSize: 14, textAlign: 'center' },
   bubble: {
     maxWidth: '88%',
     borderRadius: radius.lg,
+    borderCurve: 'continuous',
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
   },
@@ -688,7 +896,8 @@ const getStyles = themedStyles((colors: Palette) =>
   bubbleText: { color: colors.text, fontSize: 15, lineHeight: 22 },
   thinkingText: { color: colors.textFaint, fontSize: 14, fontStyle: 'italic' },
   statsText: { color: colors.textFaint, fontSize: 11, marginTop: spacing.xs },
-  verifyBadge: { fontSize: 11, fontWeight: '700', marginTop: spacing.xs },
+  verifyRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, marginTop: spacing.xs },
+  verifyBadge: { fontSize: 11, fontWeight: '700' },
   statusRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -697,18 +906,21 @@ const getStyles = themedStyles((colors: Palette) =>
   },
   statusText: { color: colors.textDim, fontSize: 13 },
   errorText: { color: colors.red, fontSize: 13, padding: spacing.sm },
+  inputArea: {
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    backgroundColor: colors.bg,
+  },
   inputRow: {
     flexDirection: 'row',
     alignItems: 'flex-end',
     gap: spacing.sm,
     padding: spacing.md,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    backgroundColor: colors.bg,
+    minHeight: CHAT_TOUCH_TARGET,
   },
   input: {
     flex: 1,
-    minHeight: 44,
+    minHeight: COMPOSER_MIN_HEIGHT,
     maxHeight: 120,
     backgroundColor: colors.surface,
     borderRadius: radius.lg,
@@ -718,27 +930,7 @@ const getStyles = themedStyles((colors: Palette) =>
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
     fontSize: 15,
+    borderCurve: 'continuous',
   },
-  micBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: radius.pill,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  micIcon: { fontSize: 18 },
-  sendBtn: {
-    backgroundColor: colors.accent,
-    borderRadius: radius.pill,
-    paddingHorizontal: spacing.lg,
-    height: 44,
-    justifyContent: 'center',
-  },
-  sendBtnDisabled: { opacity: 0.4 },
-  stopBtn: { backgroundColor: colors.red },
-  sendBtnText: { color: colors.accentText, fontWeight: '700', fontSize: 15 },
 })
 )

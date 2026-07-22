@@ -1,4 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react'
+import { useNavigation } from '@react-navigation/native'
+import { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import {
   Alert,
   AppState,
@@ -9,16 +11,28 @@ import {
   View,
 } from 'react-native'
 import * as DocumentPicker from 'expo-document-picker'
-import { CATALOG, formatBytes } from '../models/catalog'
+import { CATALOG, formatBytes, hasVision, totalDownloadBytes } from '../models/catalog'
 import { downloads } from '../lib/downloads'
 import { engine } from '../lib/engine'
 import { importModelFile, loadCustomModels, removeCustomModel } from '../lib/customModels'
-import { ramFit, ramFitLabel, totalRamLabel } from '../lib/deviceMemory'
+import {
+  ramFit,
+  ramFitLabel,
+  recommendModelForDevice,
+  totalRamLabel,
+  DeviceFitRecommendation,
+} from '../lib/deviceMemory'
 import { DownloadState, ModelId, ModelSpec } from '../types'
 import { Palette, radius, spacing, themedStyles } from '../theme'
 import { useTheme } from '../ThemeContext'
+import Icon from '../components/Icon'
+import { LOCAL_DEMO_PROOF } from '../lib/localDemo'
+import type { RootStackParamList } from '../navigation'
+
+type Nav = NativeStackNavigationProp<RootStackParamList>
 
 export default function ModelsScreen() {
+  const navigation = useNavigation<Nav>()
   const { colors } = useTheme()
   const styles = getStyles(colors)
   const [states, setStates] = useState<Record<ModelId, DownloadState>>({})
@@ -78,6 +92,8 @@ export default function ModelsScreen() {
 
   const downloaded = CATALOG.filter((m) => states[m.id]?.status === 'done')
   const available = CATALOG.filter((m) => states[m.id]?.status !== 'done')
+  const recommendation = recommendModelForDevice(CATALOG)
+  const recommendationReady = Boolean(recommendation && states[recommendation.model.id]?.status === 'done')
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={{ padding: spacing.lg }}>
@@ -90,6 +106,22 @@ export default function ModelsScreen() {
           <Text style={styles.importLink}>{importing ? 'Importing…' : 'Import .gguf'}</Text>
         </Pressable>
       </View>
+
+      {recommendation && (
+        <RecommendationCard
+          recommendation={recommendation}
+          state={states[recommendation.model.id]}
+          onDownload={() => downloads.start(recommendation.model.id)}
+          onDemo={() => navigation.navigate('Chat', { demo: true })}
+        />
+      )}
+
+      {downloaded.length > 0 && !recommendationReady && (
+        <OfflineDemoCard
+          modelName={downloaded[0].name}
+          onDemo={() => navigation.navigate('Chat', { demo: true })}
+        />
+      )}
 
       {downloaded.length > 0 && (
         <>
@@ -126,16 +158,92 @@ export default function ModelsScreen() {
   )
 }
 
+function RecommendationCard({
+  recommendation,
+  state,
+  onDownload,
+  onDemo,
+}: {
+  recommendation: DeviceFitRecommendation<ModelSpec>
+  state?: DownloadState
+  onDownload: () => void
+  onDemo: () => void
+}) {
+  const { colors } = useTheme()
+  const styles = getStyles(colors)
+  const status = state?.status ?? 'idle'
+  const fitColor =
+    recommendation.fit === 'great'
+      ? colors.green
+      : recommendation.fit === 'ok'
+        ? colors.yellow
+        : recommendation.fit === 'risky'
+          ? colors.red
+          : colors.textDim
+  const actionLabel = status === 'error'
+    ? `Retry ${recommendation.model.name}`
+    : status === 'paused'
+      ? `Resume ${recommendation.model.name}`
+      : `Download ${recommendation.model.name}`
+
+  return (
+    <View style={styles.recommendationCard} accessible accessibilityRole="summary">
+      <View style={styles.recommendationHeader}>
+        <View style={styles.recommendationHeading}>
+          <Text style={styles.recommendationEyebrow}>Recommended starting point</Text>
+          <Text style={styles.recommendationTitle}>{recommendation.model.name}</Text>
+        </View>
+        <Text style={[styles.fitBadge, { color: fitColor, borderColor: fitColor }]}>
+          {recommendation.fitLabel}
+        </Text>
+      </View>
+      <Text style={styles.recommendationReason}>{recommendation.rationale}</Text>
+      <Text style={styles.recommendationMeta}>
+        {formatBytes(totalDownloadBytes(recommendation.model))} download / {recommendation.model.params} / {recommendation.ramLabel}
+      </Text>
+      <Text style={styles.recommendationNote}>
+        Estimate uses device RAM and model file size. Actual speed varies with context length and other apps.
+      </Text>
+      {status === 'done' ? (
+        <>
+          <Text style={styles.recommendationStatus}>Ready on this device</Text>
+          <Btn label="Try offline demo" onPress={onDemo} primary accessibilityLabel="Try offline demo" />
+        </>
+      ) : status === 'downloading' ? (
+        <Text style={styles.recommendationStatus}>Downloading recommended model</Text>
+      ) : (
+        <Btn label={actionLabel} onPress={onDownload} primary accessibilityLabel={actionLabel} />
+      )}
+    </View>
+  )
+}
+
+function OfflineDemoCard({ modelName, onDemo }: { modelName: string; onDemo: () => void }) {
+  const { colors } = useTheme()
+  const styles = getStyles(colors)
+  return (
+    <View style={styles.demoCard} accessible accessibilityRole="summary">
+      <View style={styles.demoHeader}>
+        <Icon name="check" size={18} tintColor={colors.green} />
+        <Text style={styles.demoEyebrow}>Local-only demo</Text>
+      </View>
+      <Text style={styles.demoTitle}>See {modelName} answer a real question</Text>
+      <Text style={styles.demoText}>{LOCAL_DEMO_PROOF}</Text>
+      <Btn label="Try offline demo" onPress={onDemo} primary accessibilityLabel="Try offline demo" />
+    </View>
+  )
+}
+
 function ModelCard({ spec, state }: { spec: ModelSpec; state?: DownloadState }) {
   const { colors } = useTheme()
   const styles = getStyles(colors)
   const status = state?.status ?? 'idle'
-  const fit = ramFit(spec.sizeBytes)
+  const fit = ramFit(totalDownloadBytes(spec))
   const fitColor =
     fit === 'great' ? colors.green : fit === 'ok' ? colors.yellow : colors.red
 
   const confirmDelete = () => {
-    Alert.alert('Delete model?', `${spec.name} (${formatBytes(spec.sizeBytes)}) will be removed from this device.`, [
+    Alert.alert('Delete model?', `${spec.name} (${formatBytes(totalDownloadBytes(spec))}) will be removed from this device.`, [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Delete',
@@ -154,8 +262,14 @@ function ModelCard({ spec, state }: { spec: ModelSpec; state?: DownloadState }) 
         <View style={{ flex: 1 }}>
           <Text style={styles.cardTitle}>{spec.name}</Text>
           <Text style={styles.cardSub}>
-            {spec.family} · {spec.params} · {spec.quant} · {formatBytes(spec.sizeBytes)}
+            {spec.family} · {spec.params} · {spec.quant} · {formatBytes(totalDownloadBytes(spec))} download
           </Text>
+          {hasVision(spec) && (
+            <View style={styles.capabilityBadge}>
+              <Icon name="image" size={13} tintColor={colors.accent} />
+              <Text style={styles.capabilityBadgeText}>Vision</Text>
+            </View>
+          )}
         </View>
         {fit !== 'unknown' && (
           <Text style={[styles.fitBadge, { color: fitColor, borderColor: fitColor }]}>
@@ -175,7 +289,7 @@ function ModelCard({ spec, state }: { spec: ModelSpec; state?: DownloadState }) 
             />
           </View>
           <Text style={styles.progressText}>
-            {formatBytes(state?.receivedBytes ?? 0)} / {formatBytes(state?.totalBytes ?? spec.sizeBytes)}
+            {formatBytes(state?.receivedBytes ?? 0)} / {formatBytes(state?.totalBytes ?? totalDownloadBytes(spec))}
             {status === 'paused' ? ' · paused' : ' · continues in background'}
           </Text>
         </View>
@@ -253,17 +367,25 @@ function Btn({
   onPress,
   primary,
   danger,
+  accessibilityLabel,
+  disabled = false,
 }: {
   label: string
   onPress: () => void
   primary?: boolean
   danger?: boolean
+  accessibilityLabel?: string
+  disabled?: boolean
 }) {
   const { colors } = useTheme()
   const styles = getStyles(colors)
   return (
     <Pressable
-      style={[styles.btn, primary && styles.btnPrimary, danger && styles.btnDanger]}
+      accessibilityLabel={accessibilityLabel ?? label}
+      accessibilityRole="button"
+      accessibilityState={{ disabled }}
+      disabled={disabled}
+      style={[styles.btn, primary && styles.btnPrimary, danger && styles.btnDanger, disabled && styles.btnDisabled]}
       onPress={onPress}
       hitSlop={8}
     >
@@ -309,9 +431,54 @@ const getStyles = themedStyles((colors: Palette) =>
     marginBottom: spacing.md,
     gap: spacing.sm,
   },
+  recommendationCard: {
+    backgroundColor: colors.surfaceAlt,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.accent,
+    padding: spacing.lg,
+    marginTop: spacing.sm,
+    marginBottom: spacing.md,
+    gap: spacing.sm,
+  },
+  recommendationHeader: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm },
+  recommendationHeading: { flex: 1, gap: 2 },
+  recommendationEyebrow: {
+    color: colors.textDim,
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+  },
+  recommendationTitle: { color: colors.text, fontSize: 18, fontWeight: '700' },
+  recommendationReason: { color: colors.text, fontSize: 13, lineHeight: 19 },
+  recommendationMeta: { color: colors.textDim, fontSize: 12 },
+  recommendationNote: { color: colors.textFaint, fontSize: 11, lineHeight: 16 },
+  recommendationStatus: { color: colors.green, fontSize: 13, fontWeight: '700' },
+  demoCard: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.green,
+    padding: spacing.lg,
+    marginBottom: spacing.md,
+    gap: spacing.sm,
+  },
+  demoHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  demoEyebrow: {
+    color: colors.green,
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+  },
+  demoTitle: { color: colors.text, fontSize: 17, fontWeight: '700' },
+  demoText: { color: colors.textDim, fontSize: 13, lineHeight: 19 },
   cardHeader: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm },
   cardTitle: { color: colors.text, fontSize: 17, fontWeight: '700' },
   cardSub: { color: colors.textDim, fontSize: 12, marginTop: 2 },
+  capabilityBadge: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, marginTop: spacing.xs },
+  capabilityBadgeText: { color: colors.accent, fontSize: 11, fontWeight: '700' },
   fitBadge: {
     fontSize: 11,
     fontWeight: '700',
@@ -335,6 +502,8 @@ const getStyles = themedStyles((colors: Palette) =>
   errorText: { color: colors.red, fontSize: 12 },
   btnRow: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.xs },
   btn: {
+    minHeight: 44,
+    justifyContent: 'center',
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.sm,
     borderRadius: radius.pill,
@@ -344,6 +513,7 @@ const getStyles = themedStyles((colors: Palette) =>
   },
   btnPrimary: { backgroundColor: colors.accent, borderColor: colors.accent },
   btnDanger: { backgroundColor: 'transparent', borderColor: colors.red },
+  btnDisabled: { opacity: 0.5 },
   btnText: { color: colors.text, fontSize: 13, fontWeight: '600' },
   btnTextPrimary: { color: colors.accentText },
   btnTextDanger: { color: colors.red },

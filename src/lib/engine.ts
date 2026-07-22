@@ -1,11 +1,18 @@
 import { initLlama, LlamaContext } from 'llama.rn'
 import { Platform } from 'react-native'
-import { modelPath } from './downloads'
-import { ChatMessage, InferenceSettings, MessageStats, ModelId } from '../types'
+import { modelPath, projectorPath } from './downloads'
+import { getModel } from '../models/catalog'
+import { CompletionMessage, InferenceSettings, MessageStats, ModelId } from '../types'
 
 export interface CompletionResult {
   text: string
   stats: MessageStats
+  /**
+   * Confidence of the first generated token (0–1), only set when n_probs > 0
+   * is passed. Use as a cheap proxy for answer confidence to skip expensive
+   * verify passes on high-confidence responses.
+   */
+  confidence?: number
 }
 
 type EngineStatus = 'unloaded' | 'loading' | 'ready' | 'generating'
@@ -22,11 +29,17 @@ export interface EngineLoadOptions {
   gpuAndroid?: boolean
 }
 
+export interface LoadedModalities {
+  vision: boolean
+  audio: boolean
+}
+
 class LlamaEngine {
   private context: LlamaContext | null = null
   private loadedModelId: ModelId | null = null
   private loadedContextLength = 0
   private loadedGpuAndroid = false
+  private loadedModalities: LoadedModalities = { vision: false, audio: false }
   private status: EngineStatus = 'unloaded'
   // bumped on every complete() call so a stale request's finally block
   // can never clobber a newer one's status (see preemptStaleGeneration)
@@ -38,6 +51,10 @@ class LlamaEngine {
 
   getLoadedModelId(): ModelId | null {
     return this.loadedModelId
+  }
+
+  getLoadedModalities(): LoadedModalities {
+    return { ...this.loadedModalities }
   }
 
   /**
@@ -61,9 +78,13 @@ class LlamaEngine {
     const wasGenerating = this.status === 'generating'
     this.context = null
     this.loadedModelId = null
+    this.loadedModalities = { vision: false, audio: false }
     // never release a context mid-generation — stop first so the native
     // side settles before the memory is freed
     if (wasGenerating) await Promise.resolve(ctx.stopCompletion()).catch(() => {})
+    if (typeof (ctx as any).releaseMultimodal === 'function') {
+      await (ctx as any).releaseMultimodal().catch(() => {})
+    }
     await ctx.release().catch(() => {})
   }
 
@@ -86,9 +107,12 @@ class LlamaEngine {
       throw new Error('Model is busy — try again in a moment')
     }
     this.status = 'loading'
+    let ctx: LlamaContext | null = null
     try {
       await this.releaseContext()
-      const ctx = await initLlama({
+      const spec = getModel(modelId)
+      const projector = spec?.projector
+      ctx = await initLlama({
         model: modelPath(modelId),
         n_ctx: contextLength,
         n_batch: 512,
@@ -96,15 +120,37 @@ class LlamaEngine {
         // opt-in (OpenCL on supported Adreno chips), else optimized CPU
         n_gpu_layers: Platform.OS === 'ios' || gpuAndroid ? 99 : 0,
         use_mlock: false,
+        ...(projector ? { ctx_shift: false } : {}),
       })
+      if (projector) {
+        const initialized = await ctx.initMultimodal({
+          path: projectorPath(modelId),
+          use_gpu: Platform.OS === 'ios' || gpuAndroid,
+          image_max_tokens: 512,
+        })
+        const support = initialized
+          ? await ctx.getMultimodalSupport()
+          : { vision: false, audio: false }
+        if (!initialized || !support.vision) {
+          throw new Error('The vision projector could not be initialized for this model.')
+        }
+        this.loadedModalities = support
+      }
       this.context = ctx
       this.loadedModelId = modelId
       this.loadedContextLength = contextLength
       this.loadedGpuAndroid = gpuAndroid
       this.status = 'ready'
     } catch (e) {
+      if (ctx && this.context !== ctx) {
+        if (typeof (ctx as any).releaseMultimodal === 'function') {
+          await (ctx as any).releaseMultimodal().catch(() => {})
+        }
+        await ctx.release().catch(() => {})
+      }
       this.context = null
       this.loadedModelId = null
+      this.loadedModalities = { vision: false, audio: false }
       this.status = 'unloaded'
       throw e
     }
@@ -116,10 +162,26 @@ class LlamaEngine {
   }
 
   async complete(
-    messages: Pick<ChatMessage, 'role' | 'content'>[],
+    messages: CompletionMessage[],
     settings: InferenceSettings,
     onToken: (token: string) => void,
-    options: { enableThinking?: boolean } = {}
+    options: {
+      enableThinking?: boolean
+      /** GBNF grammar string to constrain the model's output format */
+      grammar?: string
+      /**
+       * JSON Schema (serialised as a JSON string) that llama.cpp converts to
+       * a GBNF grammar for structured output. Overridden by grammar when both
+       * are supplied.
+       */
+      json_schema?: string
+      /**
+       * Request top-N token probabilities per generated token.
+       * Set to 1 to get the first-token confidence for logprob-gated verify.
+       * 0 = disabled (default).
+       */
+      n_probs?: number
+    } = {}
   ): Promise<CompletionResult> {
     await this.preemptStaleGeneration()
     const ctx = this.context
@@ -140,17 +202,31 @@ class LlamaEngine {
           ...(options.enableThinking === undefined
             ? {}
             : { enable_thinking: options.enableThinking }),
+          // grammar-constrained sampling: eliminates parse failures and reduces
+          // tokens-per-action on structured (agent) turns
+          ...(options.grammar ? { grammar: options.grammar } : {}),
+          ...(options.json_schema ? { json_schema: options.json_schema } : {}),
+          // token-probability sampling for logprob confidence gating
+          ...(options.n_probs ? { n_probs: options.n_probs } : {}),
         },
         (data) => {
           if (data.token) onToken(data.token)
         }
       )
+      // Extract top-1 confidence from the first generated token's probability
+      // distribution. High values (≥ 0.7) signal the model was decisive;
+      // callers use this to skip expensive reflection/verify passes.
+      const confidence =
+        options.n_probs && result.completion_probabilities?.length
+          ? result.completion_probabilities[0]?.probs?.[0]?.prob
+          : undefined
       return {
         text: result.text,
         stats: {
           tokensPerSecond: result.timings?.predicted_per_second,
           predictedTokens: result.timings?.predicted_n,
         },
+        confidence,
       }
     } finally {
       // only restore 'ready' if our context is still the live one and no

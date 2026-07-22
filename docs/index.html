@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Marmot — your AI lives here now</title>
-<meta name="description" content="Ollama for your phone. Download small open models and chat, plan, research, and talk with them — entirely on-device. No account, no cloud, no telemetry." />
+<title>Marmot — from shared screenshot to phone action</title>
+<meta name="description" content="Share a screenshot, receipt, message, or document. Marmot understands it locally, proposes an action, and waits for your approval before acting on your phone." />
 <link rel="icon" href="assets/logo.svg" />
 <link rel="canonical" href="https://super-marmot.github.io/" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -194,10 +194,10 @@
   <div class="nav-in">
     <a class="brand" href="#"><img src="assets/logo.svg" alt="" /><span>Marmot</span></a>
     <div class="nav-links">
-      <a href="#agent">Agent</a>
+      <a href="#share">Share to action</a>
       <a href="#models">Models</a>
       <a href="https://github.com/stancsz/marmot/blob/main/docs/AGENT.md">Docs</a>
-      <a href="https://github.com/super-marmot/super-marmot.github.io">Download</a>
+      <a href="https://github.com/stancsz/marmot/releases/latest/download/marmot.apk">Download</a>
       <a class="btn btn-ghost btn-sm" href="https://github.com/stancsz/marmot">★ GitHub</a>
     </div>
   </div>
@@ -206,22 +206,23 @@
 <header class="hero">
   <div class="wrap hero-grid">
     <div>
-      <div class="kicker" data-reveal style="--d:.05s">Ollama for your phone</div>
-      <h1 data-reveal style="--d:.15s">Your AI lives<br /><em>here</em> now.</h1>
+      <div class="kicker" data-reveal style="--d:.05s">Share to action · local by default</div>
+      <h1 data-reveal style="--d:.15s">Your shared screenshot<br /><em>becomes useful.</em></h1>
       <p class="lede" data-reveal style="--d:.28s">
-        Marmot downloads small open models and runs them <b>entirely on your
-        phone</b> — chat, agents with tools, semantic memory, document &amp;
-        repo RAG, and live voice. <b>Nothing leaves the device.</b>
+        Share a screenshot, receipt, message, or document. Marmot understands it
+        <b>locally</b>, proposes an editable action card, and waits for your
+        approval before adding a calendar event, reminder, draft reply, or saved
+        note. <b>Nothing leaves the device.</b>
       </p>
       <div class="cta-row" data-reveal style="--d:.4s">
-        <a class="btn btn-amber" href="https://github.com/super-marmot/super-marmot.github.io">Download for Android</a>
-        <a class="btn btn-ghost" href="https://github.com/stancsz/marmot/blob/main/docs/CAPABILITIES.md">How it works</a>
+        <a class="btn btn-amber" href="https://github.com/stancsz/marmot/releases/latest/download/marmot.apk">Download the Android APK</a>
+        <a class="btn btn-ghost" href="#share">See the three-step flow</a>
       </div>
       <div class="cta-note" data-reveal style="--d:.5s">Android APK · iOS builds from <a href="https://github.com/stancsz/marmot">source</a> · MIT · works in airplane mode</div>
     </div>
     <div class="phones" data-reveal style="--d:.35s">
-      <img class="phone-back" src="assets/screen-voice.svg" alt="Voice mode" />
-      <img class="phone-front" src="assets/screen-agent.svg" alt="Agent mode" />
+      <img class="phone-back" src="assets/screen-chat.svg" alt="Local chat result" />
+      <img class="phone-front" src="assets/screen-ingest.svg" alt="Share-to-action screen with local action choices" />
       <img class="sticker" src="assets/logo.svg" alt="Marmot logo" />
     </div>
   </div>
@@ -246,12 +247,37 @@
   <path d="M0,90 L0,58 L140,26 L260,52 L390,10 L520,48 L640,22 L780,58 L900,18 L1040,50 L1200,30 L1200,90 Z"/>
 </svg>
 
+<section id="share">
+  <div class="wrap">
+    <div class="sec-kicker" data-reveal>One useful loop</div>
+    <h2 data-reveal>Share it. Understand it.<br /><em>Approve the outcome.</em></h2>
+    <p class="sec-sub" data-reveal>Share a screenshot or message → understand it locally → propose the next action → approve and execute it on the phone.</p>
+    <p class="sec-sub" data-reveal>Small local models handle the interpretation; deterministic phone code handles permissions, dates, and writes.</p>
+    <div class="feat-grid">
+      <div class="feat" data-reveal>
+        <div class="chip">01 · Share</div>
+        <h3>Bring the moment in.</h3>
+        <p>Send Marmot a screenshot, receipt, message, article, or document from the app you are already using.</p>
+      </div>
+      <div class="feat" data-reveal>
+        <div class="chip">02 · Understand locally</div>
+        <h3>See the useful facts.</h3>
+        <p>Extraction happens on the phone, with a clear local-only proof and a typed preview you can edit before anything changes.</p>
+      </div>
+      <div class="feat" data-reveal>
+        <div class="chip">03 · Approve → act</div>
+        <h3>Finish in one tap.</h3>
+        <p>Approve a calendar event, reminder, draft reply, or saved note. Marmot never sends or writes behind your back.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
 <section id="features">
   <div class="wrap">
-    <div class="sec-kicker" data-reveal>What it does</div>
-    <h2 data-reveal>A pocket lab,<br />not just a chatbox.</h2>
-    <p class="sec-sub" data-reveal>Every feature below is real, unit-tested, and documented — 119 tests
-    and counting, enforced by CI on every commit.</p>
+    <div class="sec-kicker" data-reveal>More in Labs</div>
+    <h2 data-reveal>Power for later,<br />when you need it.</h2>
+    <p class="sec-sub" data-reveal>Agent mode, voice, memory, research, MCP, and repo tools remain available for power users. They are Labs surfaces; the share-to-action loop is the product's first promise.</p>
 
     <div class="feat-grid">
       <div class="feat wide pad-shot" data-reveal>
@@ -298,7 +324,7 @@
 <section id="agent" style="padding-top:20px">
   <div class="wrap stack-grid">
     <div data-reveal>
-      <div class="sec-kicker">Under the hood</div>
+      <div class="sec-kicker">Labs · under the hood</div>
       <h2>The whole frontier-agent stack, in your pocket.</h2>
       <p class="sec-sub" style="margin-bottom:30px">Nine layers, all shipped, all unit-tested —
       the same architecture the big coding agents converged on, running against a 2–4B model on your phone.</p>
@@ -358,7 +384,7 @@
       <div class="foot-wink">a marmot stores food for winter. yours stores intelligence.</div>
     </div>
     <div style="display:flex;gap:26px;flex-wrap:wrap">
-      <a href="https://github.com/super-marmot/super-marmot.github.io">Download APK</a>
+      <a href="https://github.com/stancsz/marmot/releases/latest/download/marmot.apk">Download APK</a>
       <a href="https://github.com/stancsz/marmot">GitHub</a>
       <a href="https://github.com/stancsz/marmot/blob/main/docs/AGENT.md">Agent docs</a>
       <a href="https://github.com/stancsz/marmot/blob/main/docs/CAPABILITIES.md">Capabilities</a>

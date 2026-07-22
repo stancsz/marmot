@@ -29,6 +29,18 @@ interface LoopOptions {
   /** persona/system prompt from settings — how to speak and act */
   persona?: string
   onStep?: (step: AgentStep) => void
+  /**
+   * Per-tier max tokens for each agent turn. When set, overrides
+   * whatever maxTokens the LLM was initialised with for this loop only.
+   * Drives the tiered budget system (quick=256, tool=512, research=768).
+   */
+  tokenBudget?: number
+  /**
+   * When provided, only tools whose names appear in this list are injected
+   * into the system prompt. Keeps the context lean for simple tasks.
+   * An empty array means no tools (direct-answer mode).
+   */
+  toolFilter?: ReadonlyArray<string>
 }
 
 function planPrompt(plan?: Plan): string {
@@ -46,14 +58,20 @@ function systemPrompt(
   skills: Skill[],
   memoryContext: string,
   plan?: Plan,
-  persona?: string
+  persona?: string,
+  toolFilter?: ReadonlyArray<string>
 ): string {
-  const usable = tools.filter((t) => policies.allowedTools.includes(t.name))
+  // Narrow to policy-allowed tools, then further to the tier's tool filter
+  // (if provided). An empty toolFilter means no tools — direct-answer mode.
+  let usable = tools.filter((t) => policies.allowedTools.includes(t.name))
+  if (toolFilter !== undefined) {
+    usable = usable.filter((t) => toolFilter.includes(t.name))
+  }
   const toolLines = usable
     .map((t) => `- ${t.name}: ${t.description} args: ${JSON.stringify(t.args)}`)
     .join('\n')
   return [
-    'You are Marmot, a local agent running fully on the user’s phone.',
+    `You are Marmot, a local agent running fully on the user's phone.`,
     persona ? `Persona (how to speak and act in your final answer): ${persona}` : '',
     'Work step by step: observe, decide, act, verify.',
     'On each turn respond with ONLY one JSON object, nothing else:',
@@ -115,7 +133,8 @@ export async function runAgentLoop(opts: LoopOptions): Promise<AgentResult> {
         skills,
         opts.memoryContext ?? '',
         opts.plan,
-        opts.persona
+        opts.persona,
+        opts.toolFilter
       ),
     },
     { role: 'user', content: opts.task },

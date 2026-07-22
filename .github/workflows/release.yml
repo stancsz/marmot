@@ -52,7 +52,7 @@ jobs:
           mkdir -p dist
           cp android/app/build/outputs/apk/release/app-release.apk "dist/marmot-v${VERSION}.apk"
           # stable name gives the site a permanent direct-download URL:
-          # github.com/stancsz/marmot/releases/latest/download/marmot.apk
+          # https://github.com/stancsz/marmot/releases/latest/download/marmot.apk
           cp android/app/build/outputs/apk/release/app-release.apk dist/marmot.apk
           ls -la dist/
 

@@ -29,6 +29,7 @@ import type { RootStackParamList } from '../navigation'
 import { shareAllChatsAsJson } from '../lib/exportShare'
 import { Palette, radius, spacing, themedStyles } from '../theme'
 import { ThemeMode, useTheme } from '../ThemeContext'
+import SelectMenu from '../components/SelectMenu'
 
 const CONTEXT_OPTIONS = [2048, 4096, 8192]
 
@@ -72,7 +73,11 @@ export default function SettingsScreen() {
   if (!settings) return <View style={styles.container} />
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={{ padding: spacing.lg }}>
+    <ScrollView
+      style={styles.container}
+      contentInsetAdjustmentBehavior="automatic"
+      contentContainerStyle={{ padding: spacing.lg, gap: spacing.sm }}
+    >
       <Text style={styles.rowLabel}>Appearance</Text>
       <Text style={styles.rowHint}>Dark, light, or follow your device setting.</Text>
       <View style={styles.segmentRow}>
@@ -128,22 +133,18 @@ export default function SettingsScreen() {
         Larger context remembers longer conversations but uses more memory.
         Changing this reloads the model.
       </Text>
-      <View style={styles.segmentRow}>
-        {CONTEXT_OPTIONS.map((n) => {
-          const active = settings.contextLength === n
-          return (
-            <Pressable
-              key={n}
-              style={[styles.segment, active && styles.segmentActive]}
-              onPress={() => update({ contextLength: n })}
-            >
-              <Text style={[styles.segmentText, active && styles.segmentTextActive]}>
-                {n}
-              </Text>
-            </Pressable>
-          )
-        })}
-      </View>
+      <SelectMenu
+        accessibilityLabel="Choose context length"
+        leadingIcon="models"
+        onSelect={(id) => update({ contextLength: Number(id) })}
+        options={CONTEXT_OPTIONS.map((n) => ({
+          id: String(n),
+          label: `${n} tokens`,
+          detail: n === 8192 ? 'Best recall, highest memory use' : n === 4096 ? 'Balanced default' : 'Fastest, shortest memory',
+        }))}
+        selectedId={String(settings.contextLength)}
+        title="Context length"
+      />
 
       <Text style={styles.rowLabel}>Persona</Text>
       <Text style={styles.rowHint}>

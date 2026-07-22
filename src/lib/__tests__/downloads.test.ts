@@ -202,9 +202,15 @@ function fresh() {
   /* eslint-disable @typescript-eslint/no-var-requires */
   const storage = require('@react-native-async-storage/async-storage')
   storage.__map.clear()
-  const { downloads, modelPath } = require('../downloads')
+  const { downloads, modelPath, projectorPath } = require('../downloads')
   const { CATALOG } = require('../../models/catalog')
-  return { fs: { __state: fsState }, storage, downloads, modelPath, id: CATALOG[0].id as string, appStateListeners }
+  // Keep the state-machine fixture on a single-file text model. The catalog
+  // also contains a paired vision model, whose second projector download is
+  // exercised by the multimodal milestone tests rather than this legacy-path
+  // fixture.
+  const id = CATALOG.find((model: any) => model.id === 'qwen3.5-0.8b')?.id as string
+  const visionId = CATALOG.find((model: any) => model.id === 'smolvlm-256m')?.id as string
+  return { fs: { __state: fsState }, storage, downloads, modelPath, projectorPath, id, visionId, appStateListeners }
 }
 
 describe('DownloadManager', () => {
@@ -235,6 +241,32 @@ describe('DownloadManager', () => {
     expect(downloads.isDownloaded(id)).toBe(true)
     expect(fs.__state.files.has(modelPath(id))).toBe(true)
     expect(fs.__state.files.has(`${modelPath(id)}.part`)).toBe(false)
+  })
+
+  it('downloads and finalizes a paired model and projector as one state', async () => {
+    const { fs, downloads, modelPath, projectorPath, visionId } = fresh()
+    await downloads.init()
+    const done = downloads.start(visionId)
+    await flush()
+
+    expect(fs.__state.resumables[0].destination.uri).toBe(`${modelPath(visionId)}.part`)
+    fs.__state.resumables[0].finish(200, 175_054_528)
+    await flush()
+
+    const projectorTask = fs.__state.resumables[fs.__state.resumables.length - 1]
+    expect(projectorTask.destination.uri).toBe(`${projectorPath(visionId)}.part`)
+    projectorTask.finish(200, 190_031_616)
+    await done
+
+    expect(downloads.isDownloaded(visionId)).toBe(true)
+    expect(fs.__state.files.has(modelPath(visionId))).toBe(true)
+    expect(fs.__state.files.has(projectorPath(visionId))).toBe(true)
+    expect(fs.__state.files.has(`${modelPath(visionId)}.part`)).toBe(false)
+    expect(fs.__state.files.has(`${projectorPath(visionId)}.part`)).toBe(false)
+
+    await downloads.remove(visionId)
+    expect(fs.__state.files.has(modelPath(visionId))).toBe(false)
+    expect(fs.__state.files.has(projectorPath(visionId))).toBe(false)
   })
 
   it('a network failure surfaces as an error state', async () => {

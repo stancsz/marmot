@@ -1,10 +1,74 @@
 # Agentic Capabilities — Engineering Design
 
+## Product direction (July 2026)
+
+Marmot's next product priority is an **E4B-first private phone assistant**, not
+another general chat surface. The north-star loop is:
+
+> **Share something → understand it locally → propose the next action → get
+> explicit approval → execute it on the phone.**
+
+On devices that can run Gemma 4 E4B, the app should make multimodal input,
+personal context, and reliable phone actions visible immediately. The model
+proposes and explains; deterministic application code handles dates, tools,
+permissions, and writes. Existing web, MCP, repo, and autonomous-agent work
+remains available as Labs, but is not the next primary product investment.
+
 Target hardware: 2026 flagships (12–16 GB RAM, Snapdragon 8 Gen 5 / A19-class
 NPU, UFS4 storage). At that ceiling every capability below runs fully
 on-device. Each capability is a **policy switch** (off by default) that
 registers tools into the existing agent registry — the Policies layer we
 already built is the gate.
+
+### Shipped interaction foundation
+
+The chat surface is now a deliberate foundation for the E4B/share-to-action
+loop: semantic platform icons replace emoji controls, primary actions use
+accessible 44pt targets, state changes use fluid motion, history previews
+flatten Markdown and hide reasoning scaffolds, model choice uses a metadata
+dropdown, and chat history is organized in a searchable left drawer. This is
+not a separate product phase; it is the interaction quality bar required by
+P0–P2.
+
+## Small-model product strategy
+
+Marmot's local models should be used for bounded, high-frequency transformations
+where privacy, offline availability, and response speed matter more than broad
+cloud-scale knowledge. The app owns the structure around the model: task cards
+keep prompts short, retrieval supplies local facts, deterministic code parses
+dates and actions, and every phone write remains previewed and approval-gated.
+
+The highest-ROI product sequence is:
+
+1. **Share to outcome:** screenshot or receipt to extracted facts and a typed
+   calendar/reminder/reply/save preview. This is the acquisition wedge because
+   the transformation is visible and easy to forward.
+2. **Flight mode:** an explicitly offline session with bounded activities such
+   as language practice, explain-this, trip planning from saved content,
+   lightweight games, story continuation, and reflective check-ins. Short
+   turns, current-session memory, and Continue/Finish controls make a small
+   model feel responsive without requiring a subscription.
+3. **Private daily context:** opt-in local projects, memories, and saved
+   artifacts that make responses personal while keeping the source data on the
+   phone.
+
+Optimize these bets against useful-result latency, accepted-output rate, edit
+rate, share/forward rate, offline completion, and unapproved-write count.
+Larger models and provider connectors are fallback capacity, not the product
+thesis.
+
+### Flight mode and companion guardrails
+
+Flight mode is the retention wedge for a small local model: an entry point with
+bounded activities such as language practice, trip planning from saved content,
+light games, story continuation, and reflective check-ins. It must remain
+useful with airplane mode enabled, keep turns short, and make the current
+session boundary visible.
+
+The digital-pet layer is opt-in and user-controlled. It may keep a small local
+persona state and shared milestones, but it must not silently run an unrestricted
+background agent. Notifications, memory retention, and milestone saving are
+separate settings; every background operation has a battery and privacy budget.
 
 ## Memory & concurrency budget (16 GB flagship)
 
@@ -107,39 +171,56 @@ v1 handles JSON and complete-SSE response bodies; live streaming
 subscriptions, resources, and prompts are follow-ups. This one protocol is
 the bridge to Home Assistant, company tools, personal servers — anything.
 
-## Everyday-productivity roadmap (v3)
+## E4B-first product roadmap
 
-What people actually rate assistants highly for, mapped to mechanisms:
+This is the product priority order. It does not invalidate already-built
+engineering capabilities; it determines what the user should experience first.
 
-| # | Feature | Mechanism | Effort |
+| Phase | Product outcome | Main mechanisms | Effort |
 | --- | --- | --- | --- |
-| ✅ P1 | **Share-to-Marmot** — share any article/text from another app → summarize / save to RAG | Android `SEND` intent filters (config plugin) + iOS share extension (native target); routes into a new chat or Documents | M |
-| ✅ P2 | **Quick text actions** — proofread, translate, tone-shift, TL;DR as one-tap chips on shared or pasted text | Prompt presets over the existing engine; chips UI on the share-ingest screen | S |
-| P3 | **Vision** — photograph a whiteboard/receipt/document and ask about it | Gemma 4 E4B/E2B are multimodal; download the mmproj file alongside the GGUF, llama.rn multimodal completion; camera via expo-image-picker | M |
-| P4 | **Calendar & reminders tools** — "add lunch with Sam Friday" fully on-device | expo-calendar as agent tools (`create_event`, `list_events`) behind a permission-gated policy switch | S |
-| P5 | **Daily briefing / scheduled tasks** — a morning card from memory + docs (+ web if enabled) | expo-notifications + expo-background-task; orchestrator run persisted to a briefing chat | M |
-| ✅ P6 | **Deep research mode** — multi-source cited reports, ChatGPT/Gemini-style | Preset over the existing orchestrator + web tools: fan out N queries → fetch → synthesize with citations + progress UI | S |
-| ✅ P7 | **Shortcuts / automation hooks** — trigger Marmot from iOS Shortcuts & Android intents | `marmot://ask?text=…` deep link route (Expo linking) + x-callback response | S |
-| P8 | **Projects** — group chats with pinned documents + a per-project persona (Claude Projects) | Chat gains `projectId`; project = persona + document subset filter over existing RAG | M |
-| P9 | **Artifacts-lite** — render generated HTML/SVG/tables in a preview card | WebView (react-native-webview) sandboxed render of fenced html blocks | M |
-| P10 | **Live interpreter** — two-way spoken translation | Voice stack + per-turn language toggle; Qwen models are strong multilingual | M |
+| **P0 — E4B unlock** | An E4B-capable user immediately understands what the phone can do locally | Device-fit detection, recommended E4B model, multimodal model card, speed/RAM/battery expectations, first-run real-content demo, offline/airplane-mode proof | M |
+| **P1 — Share to action** | Any shared message, article, screenshot, or document becomes useful in one step | Android `SEND` intent + iOS share extension, action presets, structured result cards, copy/save/share/draft actions | M |
+| **P2 — Phone actions** | Marmot turns understanding into safe phone operations | Calendar, reminders, contacts, SMS/email compose, typed action schemas, preview/approve/undo flow | M |
+| **P3 — Personal context** | Marmot answers grounded questions about the user's life and work | Permission hub, projects, local document/memory retrieval, source links, preference-aware drafting | M |
+| **P4 — E4B multimodal utility** | The camera and microphone become private input devices | Screenshot/receipt/document extraction, voice notes, transcription, decisions, action items, reminders | M |
+| **P5 — One provider connector** | Marmot helps triage one real inbox without sending data to an AI server | Gmail or Outlook OAuth, read-only search, thread summaries, deadline extraction, draft replies; no auto-send initially | L |
+| **P6 — Daily habit** | Marmot becomes useful before the user opens another app | Morning agenda card, pending actions, saved items, recent shared content, optional local notifications | M |
+| **Labs** | Advanced capabilities for power users, not the core onboarding | Web research, MCP, repo agent, file organization, live meeting participation, deep research, broad automation | Existing / later |
 
-Ordering rationale: P1/P2 capture the highest-frequency daily loop (text in
-other apps → assistant), P3 unlocks the camera (the phone's superpower), and
-P4–P7 turn Marmot from a destination app into ambient infrastructure.
+The flagship demonstration is:
+
+> **Share a screenshot or message → E4B extracts the meaning → Marmot offers a
+> calendar event, reminder, reply, or saved memory.**
+
+This is where Marmot can compete with cloud assistants on outcome, privacy,
+latency, and phone context without claiming general-model parity.
 
 ## Build order
 
-1. ✅ Web research (no native deps)
-2. ✅ Voice dictation + spoken replies (OS ASR/TTS)
-3. ✅ Live conversation v1 (`VoiceSession` machine + Voice screen)
-4. ✅ Meeting mode v1 (continuous transcript → RAG, wake-phrase suggest cards)
-5. ✅ Repo import v1 (tarball → RAG)
-6. ✅ MCP client (Streamable HTTP, Settings-managed servers)
-7. ⬜ whisper.rn ASR upgrade + background audio (build-affecting)
-8. ⬜ File organization (Android SAF, plan/approve/undo)
-9. ⬜ isomorphic-git v2; neural TTS; diarization
-10. ⬜ Everyday-productivity roadmap P1–P10 above
+Current status split for the multimodal milestone: local screenshot/image
+grounding is shipped through SmolVLM 256M plus its paired projector. PDF/audio
+decoding remains open. Flight mode now ships as a bounded, user-invoked local
+session with five activities and no background work. The next implementation
+order is image facts to typed action previews, then explicit companion
+milestone saves and optional notifications.
 
-Items 1–4 ship now; 5–8 are the standing roadmap with their mechanisms fixed
-above so each is an implementation task, not a research task.
+1. [x] E4B device-fit path, model recommendation, and first-run offline demo
+2. [x] Native Share-to-Marmot intake and structured action cards
+3. [x] Local text/Markdown attachments with bounded, untrusted reference grounding
+4. [x] E4B multimodal attachments: screenshot/image grounding is shipped; PDF and short audio input remain open
+5. [x] Calendar event action with explicit approval, local-calendar fallback, and undo
+6. [ ] Reminders, contacts, and compose actions with approval/undo
+7. [ ] Personal context: projects, permission hub, grounded sources, local retrieval
+8. [ ] Voice notes → transcript → decisions/action items → reminders
+9. [ ] Validate the core loop on real hardware, then add one email provider
+10. [x] Bounded Flight mode MVP with a local-only proof and stop path
+11. [ ] Companion milestones, optional notifications, and daily briefing with explicit consent
+12. [ ] Keep web, MCP, repo, file organization, live meeting, and deep research
+   capabilities in Labs until the core loop meets its quality bar
+
+The quality bar for moving a capability out of Labs is measured on real phone
+tasks: useful-result latency, accepted-output rate, edit rate, groundedness,
+action completion, battery cost, and zero unapproved writes.
+
+Previously shipped capabilities remain supported and regression-tested, but the
+next user-facing investment follows the E4B-first product roadmap above.

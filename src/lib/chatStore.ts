@@ -32,8 +32,10 @@ export function newChat(modelId: string | null): Chat {
   }
 }
 
-export function newMessage(role: ChatMessage['role'], content: string): ChatMessage {
-  return { id: newId(), role, content, createdAt: Date.now() }
+export function newMessage(role: ChatMessage['role'], content: string, attachment?: ChatMessage['attachment']): ChatMessage {
+  const msg: ChatMessage = { id: newId(), role, content, createdAt: Date.now() }
+  if (attachment) msg.attachment = attachment
+  return msg
 }
 
 export async function loadChats(): Promise<Chat[]> {

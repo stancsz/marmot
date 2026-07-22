@@ -4,10 +4,28 @@ import { ModelSpec } from '../types'
  * One hand-picked model per weight class — the highest-rated open model at
  * each size that phones can run, as of July 2026 (Artificial Analysis /
  * LMArena / per-tier benchmark comparisons). All are GGUF builds hosted on
- * Hugging Face (unsloth quants). Sizes are exact byte counts verified
+ * Hugging Face (including a ggml-org vision build). Sizes are exact byte counts verified
  * against the hosted files via the HF API.
  */
 export const CATALOG: ModelSpec[] = [
+  {
+    id: 'smolvlm-256m',
+    name: 'SmolVLM 256M Vision',
+    family: 'HuggingFace SmolVLM',
+    params: '0.2B',
+    quant: 'Q8_0',
+    sizeBytes: 175_054_528,
+    url: 'https://huggingface.co/ggml-org/SmolVLM-256M-Instruct-GGUF/resolve/main/SmolVLM-256M-Instruct-Q8_0.gguf',
+    projector: {
+      url: 'https://huggingface.co/ggml-org/SmolVLM-256M-Instruct-GGUF/resolve/main/mmproj-SmolVLM-256M-Instruct-f16.gguf',
+      sizeBytes: 190_031_616,
+      modalities: ['vision'],
+    },
+    description:
+      'Small vision starter. Reads screenshots and receipts on-device with a paired projector; a fast, low-memory way to try private image understanding.',
+    license: 'Apache 2.0',
+    thinking: false,
+  },
   {
     id: 'qwen3.5-0.8b',
     name: 'Qwen3.5 0.8B',
@@ -76,6 +94,14 @@ export const CATALOG: ModelSpec[] = [
 
 export function getModel(id: string | null | undefined): ModelSpec | undefined {
   return CATALOG.find((m) => m.id === id)
+}
+
+export function totalDownloadBytes(model: Pick<ModelSpec, 'sizeBytes' | 'projector'>): number {
+  return model.sizeBytes + (model.projector?.sizeBytes ?? 0)
+}
+
+export function hasVision(model: Pick<ModelSpec, 'projector'>): boolean {
+  return model.projector?.modalities.includes('vision') ?? false
 }
 
 export function formatBytes(bytes: number): string {

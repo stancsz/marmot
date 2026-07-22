@@ -32,6 +32,12 @@
     "plugins": [
       "expo-sharing",
       [
+        "expo-calendar",
+        {
+          "calendarPermission": "Marmot adds an event only after you approve its preview."
+        }
+      ],
+      [
         "expo-share-intent",
         {
           "iosActivationRules": {

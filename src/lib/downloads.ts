@@ -1,9 +1,17 @@
-import { AppState } from 'react-native'
-import { File, Directory, Paths, DownloadTask, type DownloadPauseState, type DownloadProgress, type DownloadTaskOptions } from 'expo-file-system'
+import { AppState, type AppStateStatus } from 'react-native'
+import {
+  Directory,
+  DownloadTask,
+  File,
+  Paths,
+  type DownloadPauseState,
+  type DownloadProgress,
+  type DownloadTaskOptions,
+} from 'expo-file-system'
 import * as LegacyFileSystem from 'expo-file-system/legacy'
 import AsyncStorage from '@react-native-async-storage/async-storage'
-import { CATALOG, getModel } from '../models/catalog'
-import { DownloadState, ModelId } from '../types'
+import { CATALOG, getModel, totalDownloadBytes } from '../models/catalog'
+import { DownloadState, ModelId, ModelSpec } from '../types'
 
 const MODELS_DIR = new Directory(Paths.document, 'models')
 const RESUME_KEY = 'marmot.downloads.resume.v1'
@@ -17,8 +25,27 @@ const DOWNLOAD_OPTIONS: DownloadTaskOptions = {
   sessionType: 'background',
 }
 
+type AssetKind = 'model' | 'projector'
+
+interface DownloadAsset {
+  kind: AssetKind
+  url: string
+  sizeBytes: number
+  file: File
+  part: File
+}
+
+interface ResumeEntry {
+  asset: AssetKind
+  state: DownloadPauseState
+}
+
 export function modelPath(modelId: ModelId): string {
   return new File(MODELS_DIR, `${modelId}.gguf`).uri
+}
+
+export function projectorPath(modelId: ModelId): string {
+  return new File(MODELS_DIR, `${modelId}.mmproj.gguf`).uri
 }
 
 function getModelFile(modelId: ModelId): File {
@@ -29,17 +56,48 @@ function getPartFile(modelId: ModelId): File {
   return new File(MODELS_DIR, `${modelId}.gguf.part`)
 }
 
+function getProjectorFile(modelId: ModelId): File {
+  return new File(MODELS_DIR, `${modelId}.mmproj.gguf`)
+}
+
+function getProjectorPartFile(modelId: ModelId): File {
+  return new File(MODELS_DIR, `${modelId}.mmproj.gguf.part`)
+}
+
+/** Return the base model and optional projector as one ordered download plan. */
+export function getModelAssets(spec: ModelSpec): DownloadAsset[] {
+  const assets: DownloadAsset[] = [
+    {
+      kind: 'model',
+      url: spec.url,
+      sizeBytes: spec.sizeBytes,
+      file: getModelFile(spec.id),
+      part: getPartFile(spec.id),
+    },
+  ]
+  if (spec.projector) {
+    assets.push({
+      kind: 'projector',
+      url: spec.projector.url,
+      sizeBytes: spec.projector.sizeBytes,
+      file: getProjectorFile(spec.id),
+      part: getProjectorPartFile(spec.id),
+    })
+  }
+  return assets
+}
+
 type Listener = (states: Record<ModelId, DownloadState>) => void
 
 /**
- * Singleton download manager. Downloads go to <model>.gguf.part and are moved
- * to <model>.gguf on completion, so a .gguf file on disk is always complete.
- * Resume snapshots are persisted so an interrupted download can continue
- * after an app restart.
+ * Singleton download manager. Each asset goes to its own `.part` file and is
+ * moved into place only after completion. A paired model is `done` only when
+ * both its weights and projector are complete.
  */
 class DownloadManager {
   private states: Record<ModelId, DownloadState> = {}
   private tasks: Record<ModelId, DownloadTask> = {}
+  private activeAssets: Record<ModelId, DownloadAsset> = {}
   private listeners = new Set<Listener>()
   private initialized = false
   private cancelling = new Set<ModelId>()
@@ -54,36 +112,24 @@ class DownloadManager {
     }
 
     for (const spec of CATALOG) {
-      const info = getModelFile(spec.id)
-      if (info.exists) {
-        this.states[spec.id] = {
-          modelId: spec.id,
-          status: 'done',
-          progress: 1,
-          receivedBytes: spec.sizeBytes,
-          totalBytes: spec.sizeBytes,
-        }
+      const assets = getModelAssets(spec)
+      if (assets.every((asset) => asset.file.exists)) {
+        this.states[spec.id] = this.doneState(spec)
         continue
       }
-      const part = getPartFile(spec.id)
-      if (part.exists) {
+
+      let resumable = false
+      for (const asset of assets) {
+        if (!asset.part.exists) continue
         const snapshot = await this.loadResumeSnapshot(spec.id)
-        if (!snapshot) {
-          // A .part without resume data can't actually be resumed (the app
-          // was killed mid-download) — showing it as "paused" would lie:
-          // Resume would silently restart from zero. Reset honestly instead.
-          try { part.delete() } catch {}
+        if (!snapshot || snapshot.asset !== asset.kind) {
+          // A .part without matching resume data cannot actually be resumed.
+          try { asset.part.delete() } catch {}
           continue
         }
-        const received = part.size ?? 0
-        this.states[spec.id] = {
-          modelId: spec.id,
-          status: 'paused',
-          progress: received / spec.sizeBytes,
-          receivedBytes: received,
-          totalBytes: spec.sizeBytes,
-        }
+        resumable = true
       }
+      if (resumable) this.states[spec.id] = this.pausedState(spec)
     }
     this.emit()
   }
@@ -94,16 +140,9 @@ class DownloadManager {
     return () => this.listeners.delete(fn)
   }
 
-  /**
-   * Pause active downloads when the app is backgrounded and resume paused
-   * ones when it returns to the foreground. iOS background URLSession sessions
-   * may keep transferring, but the JS DownloadTask is not restored if the
-   * process is killed — pausing on background and resuming on foreground
-   * keeps the in-flight task and its resume data under our control so the
-   * user never sees a stuck progress bar after unlocking the phone.
-   */
+  /** Pause active downloads on background and resume them on foreground. */
   attachAppStateHandler(): () => void {
-    const sub = AppState.addEventListener('change', (next) => {
+    const sub = AppState.addEventListener('change', (next: AppStateStatus) => {
       if (next === 'background' || next === 'inactive') {
         for (const id of Object.keys(this.tasks) as ModelId[]) {
           this.pause(id).catch(() => {})
@@ -142,82 +181,135 @@ class DownloadManager {
       status: 'idle',
       progress: 0,
       receivedBytes: 0,
-      totalBytes: getModel(modelId)?.sizeBytes ?? 0,
+      totalBytes: getModel(modelId) ? totalDownloadBytes(getModel(modelId)!) : 0,
     }
     this.states[modelId] = { ...prev, ...patch }
     this.emit()
+  }
+
+  private doneState(spec: ModelSpec): DownloadState {
+    const totalBytes = totalDownloadBytes(spec)
+    return {
+      modelId: spec.id,
+      status: 'done',
+      progress: 1,
+      receivedBytes: totalBytes,
+      totalBytes,
+    }
+  }
+
+  private pausedState(spec: ModelSpec): DownloadState {
+    const totalBytes = totalDownloadBytes(spec)
+    return {
+      modelId: spec.id,
+      status: 'paused',
+      progress: this.receivedBytes(getModelAssets(spec)) / totalBytes,
+      receivedBytes: this.receivedBytes(getModelAssets(spec)),
+      totalBytes,
+    }
+  }
+
+  private receivedBytes(assets: DownloadAsset[]): number {
+    return assets.reduce((sum, asset) => {
+      if (asset.file.exists) return sum + asset.sizeBytes
+      return sum + Math.min(asset.part.size ?? 0, asset.sizeBytes)
+    }, 0)
   }
 
   async start(modelId: ModelId): Promise<void> {
     const spec = getModel(modelId)
     if (!spec || this.isDownloaded(modelId) || this.tasks[modelId]) return
 
-    const onProgress = (p: DownloadProgress) => {
-      const total = p.totalBytes > 0 ? p.totalBytes : spec.sizeBytes
-      this.update(modelId, {
-        status: 'downloading',
-        receivedBytes: p.bytesWritten,
-        totalBytes: total,
-        progress: p.bytesWritten / total,
-      })
+    const assets = getModelAssets(spec)
+    let saved = await this.loadResumeSnapshot(modelId)
+    let asset = (saved
+      ? assets.find((candidate) => candidate.kind === saved?.asset && !candidate.file.exists)
+      : undefined) ?? assets.find((candidate) => !candidate.file.exists)
+    if (!asset) {
+      this.states[modelId] = this.doneState(spec)
+      this.emit()
+      return
     }
-
-    let task: DownloadTask
-    const saved = await this.loadResumeSnapshot(modelId)
-    if (saved) {
-      task = DownloadTask.fromSavable(saved, { ...DOWNLOAD_OPTIONS, onProgress })
-    } else {
-      task = new DownloadTask(spec.url, getPartFile(modelId), { ...DOWNLOAD_OPTIONS, onProgress })
-    }
-    this.tasks[modelId] = task
-    this.update(modelId, { status: 'downloading', error: undefined })
 
     try {
-      const result = saved ? await task.resumeAsync() : await task.downloadAsync()
-      if (!result) return // paused or cancelled
+      while (asset) {
+        const completedBefore = assets
+          .filter((candidate) => candidate.kind !== asset?.kind && candidate.file.exists)
+          .reduce((sum, candidate) => sum + candidate.sizeBytes, 0)
+        const onProgress = (p: DownloadProgress) => {
+          const total = p.totalBytes > 0 ? p.totalBytes : asset!.sizeBytes
+          const received = completedBefore + Math.min(p.bytesWritten, total)
+          const overallTotal = totalDownloadBytes(spec)
+          this.update(modelId, {
+            status: 'downloading',
+            receivedBytes: received,
+            totalBytes: overallTotal,
+            progress: received / overallTotal,
+          })
+        }
 
-      const part = getPartFile(modelId)
-      const dest = getModelFile(modelId)
+        const task = saved && saved.asset === asset.kind
+          ? DownloadTask.fromSavable(saved.state, { ...DOWNLOAD_OPTIONS, onProgress })
+          : new DownloadTask(asset.url, asset.part, { ...DOWNLOAD_OPTIONS, onProgress })
+        this.tasks[modelId] = task
+        this.activeAssets[modelId] = asset
+        this.update(modelId, {
+          status: 'downloading',
+          error: undefined,
+          totalBytes: totalDownloadBytes(spec),
+          receivedBytes: this.receivedBytes(assets),
+          progress: this.receivedBytes(assets) / totalDownloadBytes(spec),
+        })
 
-      if (dest.exists) {
-        dest.delete()
+        const result = saved && saved.asset === asset.kind
+          ? await task.resumeAsync()
+          : await task.downloadAsync()
+        if (!result) return // paused or cancelled
+
+        if (asset.file.exists) asset.file.delete()
+        asset.part.moveSync(asset.file)
+        await this.clearResumeSnapshot(modelId)
+        saved = null
+        asset = assets.find((candidate) => !candidate.file.exists)
       }
-      part.moveSync(dest)
 
-      await this.clearResumeSnapshot(modelId)
-      this.update(modelId, {
-        status: 'done',
-        progress: 1,
-        receivedBytes: spec.sizeBytes,
-        totalBytes: spec.sizeBytes,
-      })
+      this.states[modelId] = this.doneState(spec)
+      this.emit()
     } catch (e: any) {
       if (this.cancelling.has(modelId)) {
-        // the rejection came from our own cancel — not a real error
         this.cancelling.delete(modelId)
         this.update(modelId, { status: 'idle', progress: 0, receivedBytes: 0 })
       } else {
-        this.update(modelId, { status: 'error', error: e?.message ?? 'Download failed' })
+        this.update(modelId, {
+          status: 'error',
+          error: e?.message ?? 'Download failed',
+          receivedBytes: this.receivedBytes(assets),
+          totalBytes: totalDownloadBytes(spec),
+          progress: this.receivedBytes(assets) / totalDownloadBytes(spec),
+        })
       }
     } finally {
       delete this.tasks[modelId]
+      delete this.activeAssets[modelId]
     }
   }
 
   async pause(modelId: ModelId): Promise<void> {
     const task = this.tasks[modelId]
-    // a pause tap can race completion — never flip a finished file to paused
-    if (!task || this.states[modelId]?.status !== 'downloading') return
+    const asset = this.activeAssets[modelId]
+    if (!task || !asset || this.states[modelId]?.status !== 'downloading') return
     try {
       await task.pauseAsync()
-      await this.saveResumeSnapshot(modelId, task)
+      await this.saveResumeSnapshot(modelId, asset.kind, task)
       if (this.states[modelId]?.status === 'downloading') {
-        this.update(modelId, { status: 'paused' })
+        const spec = getModel(modelId)
+        this.update(modelId, spec ? this.pausedState(spec) : { status: 'paused' })
       }
     } catch {
       // pausing can race with completion; ignore
     }
     delete this.tasks[modelId]
+    delete this.activeAssets[modelId]
   }
 
   async cancel(modelId: ModelId): Promise<void> {
@@ -226,18 +318,33 @@ class DownloadManager {
       this.cancelling.add(modelId)
       try { task.cancel() } catch {}
       delete this.tasks[modelId]
+      delete this.activeAssets[modelId]
     }
-    try { getPartFile(modelId).delete() } catch {}
+    const spec = getModel(modelId)
+    if (spec?.projector) {
+      for (const asset of getModelAssets(spec)) {
+        try { asset.file.delete() } catch {}
+        try { asset.part.delete() } catch {}
+      }
+    } else {
+      try { getPartFile(modelId).delete() } catch {}
+    }
     await this.clearResumeSnapshot(modelId)
     this.update(modelId, { status: 'idle', progress: 0, receivedBytes: 0 })
   }
 
   async remove(modelId: ModelId): Promise<void> {
-    // deleting a model that is still downloading must stop the task first,
-    // or it will finish later and resurrect an error state
     if (this.tasks[modelId]) await this.cancel(modelId)
-    try { getModelFile(modelId).delete() } catch {}
-    try { getPartFile(modelId).delete() } catch {}
+    const spec = getModel(modelId)
+    if (spec) {
+      for (const asset of getModelAssets(spec)) {
+        try { asset.file.delete() } catch {}
+        try { asset.part.delete() } catch {}
+      }
+    } else {
+      try { getModelFile(modelId).delete() } catch {}
+      try { getPartFile(modelId).delete() } catch {}
+    }
     await this.clearResumeSnapshot(modelId)
     this.update(modelId, { status: 'idle', progress: 0, receivedBytes: 0 })
   }
@@ -246,15 +353,20 @@ class DownloadManager {
     return LegacyFileSystem.getFreeDiskStorageAsync()
   }
 
-  private async saveResumeSnapshot(modelId: ModelId, task: DownloadTask) {
+  private async saveResumeSnapshot(modelId: ModelId, asset: AssetKind, task: DownloadTask) {
     const all = await this.loadAllSnapshots()
-    all[modelId] = task.savable()
+    all[modelId] = { asset, state: task.savable() }
     await AsyncStorage.setItem(RESUME_KEY, JSON.stringify(all))
   }
 
-  private async loadResumeSnapshot(modelId: ModelId): Promise<DownloadPauseState | null> {
+  private async loadResumeSnapshot(modelId: ModelId): Promise<ResumeEntry | null> {
     const all = await this.loadAllSnapshots()
-    return all[modelId] ?? null
+    const saved = all[modelId]
+    if (!saved) return null
+    // Accept the old single-file shape so an in-flight text-model download is
+    // not discarded after upgrading the app.
+    if ('asset' in saved && 'state' in saved) return saved as ResumeEntry
+    return { asset: 'model', state: saved as DownloadPauseState }
   }
 
   private async clearResumeSnapshot(modelId: ModelId) {
@@ -265,7 +377,7 @@ class DownloadManager {
     }
   }
 
-  private async loadAllSnapshots(): Promise<Record<string, DownloadPauseState>> {
+  private async loadAllSnapshots(): Promise<Record<string, ResumeEntry | DownloadPauseState>> {
     try {
       const raw = await AsyncStorage.getItem(RESUME_KEY)
       return raw ? JSON.parse(raw) : {}

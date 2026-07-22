@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react'
 import { StatusBar } from 'expo-status-bar'
-import { Pressable, Text } from 'react-native'
 import { DarkTheme, DefaultTheme, NavigationContainer, createNavigationContainerRef } from '@react-navigation/native'
 import { createNativeStackNavigator } from '@react-navigation/native-stack'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
@@ -11,9 +10,11 @@ import ModelsScreen from './src/screens/ModelsScreen'
 import SettingsScreen from './src/screens/SettingsScreen'
 import VoiceScreen from './src/screens/VoiceScreen'
 import IngestScreen from './src/screens/IngestScreen'
+import FlightModeScreen from './src/screens/FlightModeScreen'
 import WelcomeOverlay from './src/components/WelcomeOverlay'
 import { useShareIntent } from 'expo-share-intent'
 import { ThemeProvider, useTheme } from './src/ThemeContext'
+import IconButton from './src/components/IconButton'
 import type { RootStackParamList } from './src/navigation'
 
 const Stack = createNativeStackNavigator<RootStackParamList>()
@@ -68,9 +69,13 @@ function AppInner() {
           options={({ navigation }) => ({
             title: 'Marmot',
             headerRight: () => (
-              <Pressable onPress={() => navigation.navigate('Settings')} hitSlop={12}>
-                <Text style={{ color: colors.textDim, fontSize: 15 }}>Settings</Text>
-              </Pressable>
+              <IconButton
+                accessibilityLabel="Open settings"
+                hitSlop={8}
+                icon="settings"
+                onPress={() => navigation.navigate('Settings')}
+                variant="ghost"
+              />
             ),
           })}
         />
@@ -80,6 +85,7 @@ function AppInner() {
         <Stack.Screen name="Memory" component={MemoryScreen} options={{ title: 'Memory' }} />
         <Stack.Screen name="Voice" component={VoiceScreen} options={{ title: 'Voice' }} />
         <Stack.Screen name="Ingest" component={IngestScreen} options={{ title: 'Quick actions' }} />
+        <Stack.Screen name="Flight" component={FlightModeScreen} options={{ title: 'Flight mode' }} />
       </Stack.Navigator>
     </NavigationContainer>
   )

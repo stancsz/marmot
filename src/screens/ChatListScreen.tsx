@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react'
+import React, { useCallback, useLayoutEffect, useState } from 'react'
 import {
   Alert,
   FlatList,
@@ -9,12 +9,13 @@ import {
 } from 'react-native'
 import { useFocusEffect, useNavigation } from '@react-navigation/native'
 import { NativeStackNavigationProp } from '@react-navigation/native-stack'
-import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Chat } from '../types'
 import { deleteChat, loadChats } from '../lib/chatStore'
 import { shareChatAsJson, shareChatAsMarkdown } from '../lib/exportShare'
 import { loadCustomModels, resolveModel } from '../lib/customModels'
-import { visibleAnswer } from '../lib/thinking'
+import { chatPreview } from '../lib/chatPreview'
+import ChatHistoryDrawer from '../components/ChatHistoryDrawer'
+import IconButton from '../components/IconButton'
 import { Palette, radius, spacing, themedStyles } from '../theme'
 import { useTheme } from '../ThemeContext'
 import type { RootStackParamList } from '../navigation'
@@ -23,10 +24,24 @@ type Nav = NativeStackNavigationProp<RootStackParamList>
 
 export default function ChatListScreen() {
   const navigation = useNavigation<Nav>()
-  const insets = useSafeAreaInsets()
   const { colors } = useTheme()
   const styles = getStyles(colors)
   const [chats, setChats] = useState<Chat[]>([])
+  const [drawerOpen, setDrawerOpen] = useState(false)
+
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      headerLeft: () => (
+        <IconButton
+          accessibilityLabel="Open navigation"
+          hitSlop={8}
+          icon="menu"
+          onPress={() => setDrawerOpen(true)}
+          variant="ghost"
+        />
+      ),
+    })
+  }, [navigation])
 
   useFocusEffect(
     useCallback(() => {
@@ -62,7 +77,8 @@ export default function ChatListScreen() {
       <FlatList
         data={chats}
         keyExtractor={(c) => c.id}
-        contentContainerStyle={{ padding: spacing.lg, paddingBottom: 120 }}
+        contentInsetAdjustmentBehavior="automatic"
+        contentContainerStyle={{ padding: spacing.lg, paddingBottom: spacing.xl }}
         ListEmptyComponent={
           <View style={styles.empty}>
             <Text style={styles.emptyTitle}>No chats yet</Text>
@@ -84,8 +100,11 @@ export default function ChatListScreen() {
         renderItem={({ item }) => {
           const model = resolveModel(item.modelId)
           const last = item.messages[item.messages.length - 1]
+          const preview = last ? chatPreview(last.content, undefined, last.role) : ''
           return (
             <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`Open chat ${item.title}`}
               style={styles.card}
               onPress={() => navigation.navigate('Chat', { chatId: item.id })}
               onLongPress={() => onChatMenu(item)}
@@ -93,9 +112,9 @@ export default function ChatListScreen() {
               <Text style={styles.cardTitle} numberOfLines={1}>
                 {item.title}
               </Text>
-              {last ? (
+              {preview ? (
                 <Text style={styles.cardPreview} numberOfLines={2}>
-                  {visibleAnswer(last.content).replace(/\s+/g, ' ')}
+                  {preview}
                 </Text>
               ) : null}
               <View style={styles.cardMeta}>
@@ -108,26 +127,36 @@ export default function ChatListScreen() {
           )
         }}
       />
-      <View style={[styles.fabRow, { bottom: spacing.xl + insets.bottom }]}>
-        <Pressable
-          style={[styles.fab, styles.fabSecondary]}
-          onPress={() => navigation.navigate('Ingest')}
-        >
-          <Text style={styles.fabSecondaryText}>⚡</Text>
-        </Pressable>
-        <Pressable
-          style={[styles.fab, styles.fabSecondary]}
-          onPress={() => navigation.navigate('Models')}
-        >
-          <Text style={styles.fabSecondaryText}>Models</Text>
-        </Pressable>
-        <Pressable
-          style={styles.fab}
-          onPress={() => navigation.navigate('Chat', {})}
-        >
-          <Text style={styles.fabText}>New chat</Text>
-        </Pressable>
-      </View>
+      <ChatHistoryDrawer
+        chats={chats}
+        onActions={() => {
+          setDrawerOpen(false)
+          navigation.navigate('Ingest')
+        }}
+        onClose={() => setDrawerOpen(false)}
+        onFlightMode={() => {
+          setDrawerOpen(false)
+          navigation.navigate('Flight')
+        }}
+        onLongPressChat={onChatMenu}
+        onModels={() => {
+          setDrawerOpen(false)
+          navigation.navigate('Models')
+        }}
+        onNewChat={() => {
+          setDrawerOpen(false)
+          navigation.navigate('Chat', {})
+        }}
+        onSelectChat={(chat) => {
+          setDrawerOpen(false)
+          navigation.navigate('Chat', { chatId: chat.id })
+        }}
+        onSettings={() => {
+          setDrawerOpen(false)
+          navigation.navigate('Settings')
+        }}
+        visible={drawerOpen}
+      />
     </View>
   )
 }
@@ -157,6 +186,7 @@ const getStyles = themedStyles((colors: Palette) =>
       borderRadius: radius.md,
       borderWidth: 1,
       borderColor: colors.border,
+      borderCurve: 'continuous',
       padding: spacing.lg,
       marginBottom: spacing.md,
       gap: spacing.xs,
@@ -175,25 +205,5 @@ const getStyles = themedStyles((colors: Palette) =>
       fontWeight: '600',
     },
     cardDate: { color: colors.textFaint, fontSize: 12 },
-    fabRow: {
-      position: 'absolute',
-      right: spacing.lg,
-      flexDirection: 'row',
-      gap: spacing.md,
-    },
-    fab: {
-      backgroundColor: colors.accent,
-      paddingHorizontal: spacing.xl,
-      paddingVertical: 14,
-      borderRadius: radius.pill,
-      elevation: 4,
-    },
-    fabText: { color: colors.accentText, fontWeight: '700', fontSize: 15 },
-    fabSecondary: {
-      backgroundColor: colors.surfaceAlt,
-      borderWidth: 1,
-      borderColor: colors.border,
-    },
-    fabSecondaryText: { color: colors.text, fontWeight: '600', fontSize: 15 },
   })
 )
