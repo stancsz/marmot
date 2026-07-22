@@ -20,6 +20,12 @@ describe('typed share action cards', () => {
     expect(card.status).toBe('preview')
   })
 
+  it('keeps an OCR quality warning on a save preview', () => {
+    const card = saveActionCard('Total $14.25', 'Review the short local OCR result before saving.')
+    expect(card.qualityWarning).toMatch(/short local OCR/i)
+    expect(card.requiresApproval).toBe(true)
+  })
+
   it('flags helper and refusal templates instead of treating them as drafts', () => {
     expect(isUnusableDraftReply("Sure, but I'd be happy to help you figure out the answer.")).toBe(true)
     expect(isUnusableDraftReply('What is the problem you are facing?')).toBe(true)

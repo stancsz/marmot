@@ -326,6 +326,38 @@ function normalizedVisionSegments(input: string): string[] {
     .filter((line): line is string => Boolean(line))
 }
 
+export interface ImageTextExtraction {
+  content: string
+  unclear: boolean
+}
+
+const IMAGE_TEXT_EMPTY = /^(?:none|unclear|no readable text|no visible text|cannot read|unable to read)\.?$/i
+const IMAGE_TEXT_DESCRIPTION = /^(?:page\s+(?:showing|with|contains|displaying|has|of)|screenshot|screen\s+description|image\s+description|a\s+screenshot|the\s+screenshot|screen\s+shows|image\s+(?:shows|contains|displays)|this\s+(?:image|screenshot|page)\s+(?:shows|contains|displays))\b/i
+
+/**
+ * Normalizes generic local vision output without turning a description into OCR.
+ * Short results remain usable previews but are marked unclear for human review.
+ */
+export function normalizeImageText(input: string): ImageTextExtraction {
+  const lines = input
+    .replace(/```[^\n]*/g, '')
+    .replace(/\r\n?/g, '\n')
+    .split('\n')
+    .map((line) => {
+      let normalized = cleanLine(line).replace(PAGE_PREFIX, '').trim()
+      normalized = stripOutputPrefix(normalized)
+      return normalized
+    })
+    .filter((line) => Boolean(line) && !IMAGE_TEXT_EMPTY.test(line))
+
+  const content = lines
+    .filter((line) => !IMAGE_TEXT_DESCRIPTION.test(line))
+    .join('\n')
+    .trim()
+  const wordCount = content.split(/\s+/).filter(Boolean).length
+  return { content, unclear: !content || wordCount < 4 }
+}
+
 function labeledFields(segments: string[]): { fields: LabeledFields; body: string[] } {
   const fields: LabeledFields = { title: [], date: [], time: [], notes: [] }
   const body: string[] = []

@@ -3,6 +3,7 @@ import {
   calendarEventDraft,
   hasExplicitCalendarTime,
   normalizeCalendarEvent,
+  normalizeImageText,
   parseCalendarEvent,
 } from '../phoneActions'
 
@@ -66,6 +67,26 @@ describe('phone action previews', () => {
     expect(normalizeCalendarEvent(noisyVisionOutput, new Date(2026, 6, 21).getTime())).not.toContain('Page 1')
     expect(normalizeCalendarEvent(noisyVisionOutput, new Date(2026, 6, 21).getTime())).not.toContain('Screen description')
     expect(normalizeCalendarEvent(noisyVisionOutput, new Date(2026, 6, 21).getTime())).not.toContain('OCR text')
+  })
+
+  it('preserves readable generic image text while removing OCR wrappers', () => {
+    const extracted = normalizeImageText([
+      'OCR text:',
+      '**Cafe North**',
+      '- Total: $14.25',
+      '- 2026-07-24 09:15 AM',
+    ].join('\n'))
+
+    expect(extracted).toEqual({
+      content: 'Cafe North\nTotal: $14.25\n2026-07-24 09:15 AM',
+      unclear: false,
+    })
+  })
+
+  it('fails closed for NONE and marks short OCR as unclear', () => {
+    expect(normalizeImageText('NONE')).toEqual({ content: '', unclear: true })
+    expect(normalizeImageText('Total $14.25')).toEqual({ content: 'Total $14.25', unclear: true })
+    expect(normalizeImageText('Page showing information about the app.')).toEqual({ content: '', unclear: true })
   })
 
   it('rejects vision output with no explicit time', () => {

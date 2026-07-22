@@ -114,12 +114,13 @@ export function actionCardFor(
   }
 }
 
-export function saveActionCard(content: string): ActionCard {
+export function saveActionCard(content: string, qualityWarning?: string): ActionCard {
   return {
     kind: 'save_document',
     title: 'Save to documents',
     sourceAction: 'save_document',
     content,
+    ...(qualityWarning ? { qualityWarning } : {}),
     requiresApproval: true,
     status: 'preview',
   }

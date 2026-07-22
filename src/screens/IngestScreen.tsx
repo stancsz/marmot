@@ -23,7 +23,7 @@ import { loadSettings } from '../lib/chatStore'
 import { TEXT_ACTION_GROUPS, TEXT_ACTIONS, TextAction } from '../lib/textActions'
 import { appendVoiceTranscript } from '../lib/voiceInput'
 import { ActionCard, actionCardFor, saveActionCard } from '../lib/actionCards'
-import { calendarEventCard, hasExplicitCalendarTime, normalizeCalendarEvent } from '../lib/phoneActions'
+import { calendarEventCard, hasExplicitCalendarTime, normalizeCalendarEvent, normalizeImageText } from '../lib/phoneActions'
 import { createApprovedResultShareCard, renderApprovedResultShareCard } from '../lib/shareCards'
 import { buildCompletionMessages } from '../lib/attachmentContext'
 import { getModel } from '../models/catalog'
@@ -313,6 +313,83 @@ export default function IngestScreen() {
     }
   }, [attachment, busy, text])
 
+  const extractImageTextFromAttachment = useCallback(async () => {
+    if (!attachment || !attachment.mimeType.startsWith('image/') || busy) return
+    const requestId = ++requestRef.current
+    setActiveAction(null)
+    setPendingOptions(null)
+    setResult('')
+    setActionCard(null)
+    setBusy(true)
+    setBusyLabel('Extracting text from image')
+    try {
+      const settings = await loadSettings()
+      await downloads.init()
+      const modelId = downloads
+        .downloadedModelIds()
+        .find((id) => getModel(id)?.projector?.modalities.includes('vision'))
+      if (!modelId) {
+        Alert.alert('Vision model needed', 'Download SmolVLM 256M Vision in the model library to read this image locally.')
+        return
+      }
+      await engine.ensureLoaded(modelId, settings.contextLength, {
+        gpuAndroid: settings.gpuAndroid,
+      })
+      if (!engine.getLoadedModalities().vision) {
+        throw new Error('The downloaded local model does not expose vision support.')
+      }
+      const prompt = [
+        'Read only the visible text in the attached image locally. It may be a receipt, event screenshot, private message, travel document, or other document.',
+        'Copy every readable line as faithfully as possible. Preserve line breaks, spelling, numbers, dates, prices, and punctuation.',
+        'Do not describe the screen, app, buttons, page, layout, or image. Do not infer missing text or answer questions.',
+        'Return NONE if no readable text is visible.',
+      ].join('\n')
+      const messages = await buildCompletionMessages(
+        [{ role: 'user', content: prompt, attachment }],
+        { vision: true }
+      )
+      let acc = ''
+      const completion = await engine.complete(
+        messages,
+        {
+          ...settings,
+          temperature: 0.1,
+          topP: 0.8,
+          maxTokens: 256,
+        },
+        (token) => {
+          acc += token
+          const parts = splitThinking(acc)
+          setThinkingLive(parts.isThinking)
+          if (parts.answer) setResult(parts.answer)
+        },
+        { enableThinking: false }
+      )
+      if (requestRef.current !== requestId) return
+      const extracted = normalizeImageText(visibleAnswer(completion.text))
+      if (!extracted.content) {
+        throw new Error('I could not confirm readable text in this image. No document was created.')
+      }
+      setText(extracted.content)
+      setResult('')
+      setActionCard(saveActionCard(
+        extracted.content,
+        extracted.unclear ? 'The local model returned very little text. Review it before saving.' : undefined
+      ))
+    } catch (error: any) {
+      if (requestRef.current === requestId) {
+        setResult('')
+        Alert.alert('Could not extract text', error?.message ?? 'Local image text extraction failed.')
+      }
+    } finally {
+      if (requestRef.current === requestId) {
+        setBusy(false)
+        setBusyLabel('')
+        setThinkingLive(false)
+      }
+    }
+  }, [attachment, busy])
+
   const previewSaveToDocuments = useCallback(() => {
     const input = text.trim()
     if (!input) return
@@ -570,16 +647,28 @@ export default function IngestScreen() {
               </View>
             </Pressable>
             {attachment?.mimeType.startsWith('image/') ? (
-              <Pressable
-                disabled={busy}
-                style={[styles.chip, busy && { opacity: 0.45 }]}
-                onPress={extractCalendarEvent}
-              >
-                <View style={styles.chipContent}>
-                  <Icon name="image" size={16} tintColor={colors.textDim} />
-                  <Text style={styles.chipText}>Extract calendar event</Text>
-                </View>
-              </Pressable>
+              <>
+                <Pressable
+                  disabled={busy}
+                  style={[styles.chip, busy && { opacity: 0.45 }]}
+                  onPress={extractImageTextFromAttachment}
+                >
+                  <View style={styles.chipContent}>
+                    <Icon name="file" size={16} tintColor={colors.textDim} />
+                    <Text style={styles.chipText}>Extract text from image</Text>
+                  </View>
+                </Pressable>
+                <Pressable
+                  disabled={busy}
+                  style={[styles.chip, busy && { opacity: 0.45 }]}
+                  onPress={extractCalendarEvent}
+                >
+                  <View style={styles.chipContent}>
+                    <Icon name="image" size={16} tintColor={colors.textDim} />
+                    <Text style={styles.chipText}>Extract calendar event</Text>
+                  </View>
+                </Pressable>
+              </>
             ) : null}
           </View>
         </View>

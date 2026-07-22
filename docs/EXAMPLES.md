@@ -28,10 +28,15 @@ and the canonical GitHub link.
 delivered a sanitized event-card image to Marmot. The image was copied into
 private app storage and the local vision model initialized. The OCR guard did
 not recognize a clear title/date/time, so Marmot refused to create a calendar
-action instead of guessing.
+action instead of guessing. Image attachments now also offer a generic
+`Extract text from image` fallback that creates an approval-gated Save to
+documents preview; receipt-quality OCR is still unverified.
 
 - [external screenshot intake](verification/flagship-external-screenshot-clean-2026-07-22.png)
 - [safe extraction guard](verification/flagship-screenshot-extraction-strict-final-2026-07-22.png)
+- [generic image-text action chip](verification/image-text-chip-2026-07-22.png)
+- [generic image-text safe failure](verification/image-text-fail-guarded-final-2026-07-22.png)
+- [runtime record](verification/image-text-2026-07-22.md)
 
 ## Private message -> draft reply
 
@@ -52,10 +57,16 @@ claim that the 0.8B model is ready for polished reply generation.
 
 ## Receipt -> extraction
 
-**Status: open.** Receipt OCR and receipt-to-action behavior are not claimed
-until a real sanitized receipt fixture passes the same local extraction,
-approval, and phone-action checks. The current screenshot benchmark documents
-the vision latency and safe failure boundary instead.
+**Status: generic local text preview implemented; receipt quality open.** The
+generic image-text path preserves readable lines and refuses empty/`NONE`
+results. Receipt OCR and receipt-to-action behavior are not claimed until a
+real sanitized receipt fixture passes local extraction, approval, and
+phone-action checks. The current screenshot benchmark documents the vision
+latency and safe failure boundary instead.
+
+The latest Android run also rejected a model-generated page description rather
+than showing it as extracted text or saving it. That proves the safety boundary,
+not receipt-quality OCR.
 
 ## Offline travel
 
