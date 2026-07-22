@@ -3,13 +3,13 @@
 ## Canonical identity
 
 - Canonical application repository: `https://github.com/stancsz/marmot`
-- Public homepage: `https://super-marmot.github.io/`
+- Public homepage: `https://stancsz.github.io/marmot/`
 - GitHub metadata was verified after update: the homepage points to the live
   site, the description names the share-to-action loop, Discussions are
   enabled, and the latest release remains `v0.1.0`.
-- The separate Pages repository is synchronized and published at commit
-  `99bfdb1`; its GitHub Pages deployment run `29934299051` completed
-  successfully after Marmot commit `4711dcf` was pushed.
+- GitHub Pages is served from the canonical repository's `main` branch at
+  `/`; the deployment run `29942861319` completed successfully after Marmot
+  commit `12d813d` was pushed.
 
 ## Live checks
 

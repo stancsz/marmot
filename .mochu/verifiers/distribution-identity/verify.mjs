@@ -14,7 +14,7 @@ const apkUrl = `${canonicalRepo}/releases/latest/download/marmot.apk`
 const staleLinks = [
   'https://github.com/super-marmot/marmot',
   'https://github.com/super-marmot/super-marmot.github.io',
-  'https://stancsz.github.io/marmot',
+  'https://super-marmot.github.io',
 ]
 
 const failures = []
@@ -40,6 +40,8 @@ for (const name of Object.keys(files)) {
 
 requireText('readme', apkUrl, 'stable latest-release APK URL')
 requireText('homepage', apkUrl, 'stable latest-release APK URL')
+requireText('readme', 'https://stancsz.github.io/marmot/', 'canonical Pages URL')
+requireText('homepage', 'https://stancsz.github.io/marmot/', 'canonical Pages URL')
 requireText('release', 'dist/marmot.apk', 'stable APK artifact')
 requireText('readme', 'share something → understand it locally → propose the next action → approve and execute it on the phone', 'flagship share-to-action promise')
 requireText('homepage', 'Share a screenshot or message → understand it locally → propose the next action → approve and execute it on the phone', 'flagship homepage promise')

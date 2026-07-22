@@ -11,7 +11,7 @@
 </p>
 
 <p align="center">
-  <a href="https://super-marmot.github.io"><b>super-marmot.github.io</b></a>
+  <a href="https://stancsz.github.io/marmot/"><b>stancsz.github.io/marmot</b></a>
 </p>
 
 <p align="center">
