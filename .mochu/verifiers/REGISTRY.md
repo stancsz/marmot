@@ -11,3 +11,4 @@
 | flight-mode-verifier | product | Flight mode exposes bounded offline activities with a local-only proof and an explicit stop path | `node .mochu/verifiers/flight-mode/verify.mjs` | iter-10 |
 | distribution-identity-verifier | seo-positioning-copy | Public repo and homepage use one canonical repository, stable release link, and the share-to-action promise | `node .mochu/verifiers/distribution-identity/verify.mjs` | iter-11 |
 | store-distribution-verifier | trust | Production Android signing, AAB release, and EAS Android/iOS submission are configured without hard-coded credentials | `node .mochu/verifiers/store-distribution/verify.mjs` | iter-12 |
+| flagship-share-vertical-verifier | features | External screenshot/message share is copied locally, understood by a vision-capable model, and becomes an approval-gated calendar action | `node .mochu/verifiers/flagship-share-vertical/verify.mjs` | iter-13 |
