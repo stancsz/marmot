@@ -7,16 +7,18 @@
 - GitHub metadata was verified after update: the homepage points to the live
   site, the description names the share-to-action loop, Discussions are
   enabled, and the latest release remains `v0.1.0`.
-- The separate Pages repository has a pending synchronized `index.html` change
-  in the local checkout; it is not considered published until the selected
-  proof assets are committed to Marmot, pushed, then the Pages commit is pushed
-  and its raw/live URLs are rechecked.
+- The separate Pages repository is synchronized and published at commit
+  `99bfdb1`; its GitHub Pages deployment run `29934299051` completed
+  successfully after Marmot commit `4711dcf` was pushed.
 
 ## Live checks
 
-- Cache-busting homepage request returned HTTP 200 with title
+- A no-cache homepage request returned HTTP 200 with title
   `Marmot — from shared screenshot to phone action`, the flagship promise,
-  the stable APK link, and no stale Pages-repository link.
+  the proof section, exact `192` test count, raw proof asset links, and the
+  stable APK link.
+- Raw proof assets returned HTTP 200, including the clean external screenshot
+  intake, approved result card, and native share-sheet capture.
 - `https://github.com/stancsz/marmot/releases/latest/download/marmot.apk`
   returned HTTP 200 with `application/vnd.android.package-archive` and a
   `175874623`-byte artifact.
