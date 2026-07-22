@@ -42,7 +42,7 @@ requireText('readme', apkUrl, 'stable latest-release APK URL')
 requireText('homepage', apkUrl, 'stable latest-release APK URL')
 requireText('release', 'dist/marmot.apk', 'stable APK artifact')
 requireText('readme', 'share something → understand it locally → propose the next action → approve and execute it on the phone', 'flagship share-to-action promise')
-requireText('homepage', 'Share a screenshot or message → understand it locally → approve the next action → execute it on the phone', 'flagship homepage promise')
+requireText('homepage', 'Share a screenshot or message → understand it locally → propose the next action → approve and execute it on the phone', 'flagship homepage promise')
 requireText('homepage', 'calendar', 'phone-action outcome')
 
 if (failures.length) {
